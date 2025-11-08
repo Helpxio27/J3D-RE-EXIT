@@ -65,7 +65,7 @@ class Player(pygame.sprite.Sprite):
             self.dash_cd=30
 
     def jump(self):
-        self.vel.y=self.jump_force
+        self.vit.y=self.jump_force
         self.sur_terre=False
         self.coyote_timer=0
 
@@ -87,7 +87,7 @@ class Player(pygame.sprite.Sprite):
             if self.rect.colliderect(p.rect):
                 if self.vit.y>0:
                     self.rect.bottom=p.rect.top 
-                    self.vel.y=0
+                    self.vit.y=0
                     self.sur_terre=True
                     self.coyote_timer=10
                 elif self.vit.y<0:
@@ -133,4 +133,5 @@ class Player(pygame.sprite.Sprite):
 
         if self.sur_terre:
             self.autorise_wall_jump=True
+
 
