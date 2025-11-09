@@ -69,7 +69,10 @@ class Player(pygame.sprite.Sprite):
         self.sur_terre=False
         self.coyote_timer=0
 
-    def try_wall_jump(self):
+    # Problem on keys -> Keys is not defined.
+    # "and uhh goddam this code is complex" - Helpxio
+
+    def try_wall_jump(self): 
         if self.on_wall and keys[self.controls["jump"]] and self.autorise_wall_jump:
             self.vit=Vector2( 
                 self.wall_jump_force.x * -self.wall_dir, self.wall_jump_force.y
