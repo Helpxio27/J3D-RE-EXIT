@@ -119,6 +119,8 @@ class Player(pygame.sprite.Sprite):
                     self.vit.x=0
                     self.on_wall=True
                     self.wall_dir=-1
+        self.pos = Vector2(self.rect.topleft)
+
     
     def update(self, keys, platforme):
         self.handle_input(keys)
@@ -146,6 +148,5 @@ class Player(pygame.sprite.Sprite):
 
         if self.sur_terre:
             self.autorise_wall_jump=True
-
 
 
