@@ -25,6 +25,19 @@ class Player:
         # Particle Emitter for effects
         self.trail = ParticleEmitter()
 
+        #WAll 
+        self.on_wall= False    #le joueur touche un mur
+        self.wall_dir= 0       #mur gquche = -1 et mur droit = 1 
+        self.wall_slide_speed= 4   #vitesse de la chute
+        #wall jump
+        self.wall_jump=pygame.Vector2(12,-15)
+        self.can_wall_jump= True
+        #jump buffer
+        self.jump_buffer= 0
+        self.jump_buffer_time= 8 #frames
+    
+    
+    
     # ================================== # 
     # HELPER FUNCTION
     def get_wish_dir(self, keys):
@@ -121,9 +134,6 @@ class Player:
 
         # Basic Drawing of player
         pygame.draw.rect(screen, (200, 50, 50), self.rect)
-
-
-
 
 
 
