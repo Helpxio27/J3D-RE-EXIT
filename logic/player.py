@@ -96,6 +96,14 @@ class Player:
 
         max_fall_speed = 20
         self.vel_y = min(self.vel_y, max_fall_speed)
+
+
+    def try_wall_jump(self):
+        if self.on_wall and self.jump_buffer > 0 and self.can_wall_jump:
+            self.vel_x = -self.wall_dir * self.wall_jump.x
+            self.vel_y = self.wall_jump.y
+            self.can_wall_jump = False
+            self.jump_buffer = 0
     # ================================== #
     # UPDATE AND DRAW (low level)
     def update(self):
