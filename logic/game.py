@@ -23,7 +23,7 @@ class Game:
                         pygame.Rect(SCREEN_WIDTH - 40, 0, 40, SCREEN_HEIGHT),  # mur droit
                         pygame.Rect(0, 0, SCREEN_WIDTH, 40), ]                  # plafond
                         #pygame.Rect(300, 350, 200, 30),
-                        #pygame.Rect(500, 200, 40, 200), 
+                        #pygame.Rect(500, 200, 40, 200), ce sont des obstacles internes si vous voulez testez
 
     def run(self):
         while self.running:
@@ -49,6 +49,12 @@ class Game:
             self.player.vel_y = 0
             self.player.on_ground = True
 
+    '''
+    def update(self):
+        
+        self.player.update(self.colliders)     # Passe les colliders pour collision et wall slide/jump
+    '''
+    
     def draw(self):
         self.screen.fill(BACKGROUND_COLOR)
         self.player.draw(self.screen)
@@ -67,4 +73,15 @@ class Game:
         )
         
         pygame.display.flip()
+
+    '''
+    def draw(self):
+        self.screen.fill(BACKGROUND_COLOR)
+        
+        for c in self.colliders:              # Dessin des colliders
+            pygame.draw.rect(self.screen, (220, 220, 220), c)
+        
+        self.player.draw(self.screen)          # Dessin du joueur
+        pygame.display.flip()
+    '''
 
