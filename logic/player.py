@@ -16,10 +16,11 @@ class Player:
 
         self.friction = 0.92   # VERY IMPORTANT (close to 1)
         self.max_speed = 14    # FAST AS HELL
-
+       
         self.gravity = 0.8 # Gravity affecting the player
         self.jump_strength = -15 # Jumping velocity (negative for upward movement)
-
+        self.max_fall_speed = 20
+        
         self.on_ground = False # To check if the player is on the ground
     
         # Particle Emitter for effects
@@ -35,7 +36,8 @@ class Player:
         #jump buffer
         self.jump_buffer= 0
         self.jump_buffer_time= 8 #frames
-    
+
+        self.trail= ParticuleEmitter()
     
     
     # ================================== # 
@@ -62,9 +64,17 @@ class Player:
         self.handle_drop(keys)
 
     def handle_jump(self, keys):
-        if keys[pygame.K_SPACE] and self.on_ground:
+        if keys[pygame.K_SPACE]:
+            self.jump_buffer = self.jump_buffer_time
+
+        if self.jump_buffer > 0:
+            self.jump_buffer -= 1
+
+        if self.jump_buffer > 0 and self.on_ground:      # Jump normal si sol
             self.vel_y = self.jump_strength
             self.on_ground = False
+            self.jump_buffer = 0
+            self.can_wall_jump = True
 
     def handle_drop(self, keys):
         if keys[pygame.K_s] and not self.on_ground:
@@ -92,11 +102,11 @@ class Player:
         self.vel_x = max(-self.max_speed, min(self.vel_x, self.max_speed))  
     
     def apply_gravity(self):
-        self.vel_y += self.gravity
-
-        max_fall_speed = 20
-        self.vel_y = min(self.vel_y, max_fall_speed)
-
+        if self.on_wall and not self.on_ground and self.vel_y > self.wall_slide_speed:   #wall slide
+            self.vel_y = self.wall_slide_speed
+        else:
+            self.vel_y += self.gravity
+        self.vel_y = min(self.vel_y, self.max_fall_speed)
 
     def try_wall_jump(self):
         if self.on_wall and self.jump_buffer > 0 and self.can_wall_jump:
@@ -107,11 +117,22 @@ class Player:
     # ================================== #
     # UPDATE AND DRAW (low level)
     def update(self):
+        self.on_ground = False         # pour reset
+        self.on_wall = False
+        self.wall_dir = 0
+        
         self.handle_input()
         self.apply_gravity()
+        self.try_wall_jump()
 
         self.rect.x += self.vel_x
+        for c in colliders:                       # collisions hori
+            self.vel_x, self.on_wall, self.wall_dir = resolve_collision_x(self.rect, c, self.vel_x)
         self.rect.y += self.vel_y
+
+        self.rect.y += self.vel_y
+        for c in colliders:                       # collision verti
+            self.vel_y, self.on_ground = resolve_collision_y(self.rect, c, self.vel_y)
 
         # Collision with platforms (NOT YET FINISHED !!!)
         # Need platform.py and collision.py for this to work
