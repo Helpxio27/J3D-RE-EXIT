@@ -1,0 +1,113 @@
+import pygame
+from particles import ParticleEmitter
+from collision import resolve_collision_x, resolve_collision_y
+
+
+class Player:
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(x, y, 50, 50)
+
+        self.vel_x = 0          # Vitesse
+        self.vel_y = 0
+
+        self.accel_ground = 1.5      # Mouvement
+        self.accel_air = 0.4
+        self.friction = 0.92
+        self.max_speed = 14
+
+        self.gravity = 0.8             # Gravité / saut
+        self.jump_strength = -15
+        self.max_fall_speed = 20
+
+        self.on_ground = False                 # États
+        self.on_wall = False
+        self.wall_dir = 0
+
+        self.wall_slide_speed = 4                   # Wall mechanics
+        self.wall_jump_force = pygame.Vector2(12, -15)
+        self.can_wall_jump = True
+
+        self.jump_buffer = 0                  # Jump buffer
+        self.jump_buffer_time = 8
+
+        self.trail = ParticleEmitter()      # Particules
+
+    
+    def get_wish_dir(self, keys):
+        return keys[pygame.K_d] - keys[pygame.K_a]
+
+    
+    def handle_jump(self, keys):
+        if keys[pygame.K_SPACE]:
+            self.jump_buffer = self.jump_buffer_time
+
+        if self.jump_buffer > 0 and self.on_ground:         # saut classique
+            self.vel_y = self.jump_strength
+            self.on_ground = False
+            self.jump_buffer = 0
+
+        elif self.jump_buffer > 0 and self.on_wall and not self.on_ground:  # wall jump 
+            self.vel_x = -self.wall_dir * self.wall_jump_force.x        # on se prpulse vers la direction opposé
+            self.vel_y = self.wall_jump_force.y
+            
+            self.jump_buffer = 0
+        
+        if self.jump_buffer > 0:
+            self.jump_buffer -= 1
+
+    def handle_drop(self, keys):
+        if keys[pygame.K_s] and not self.on_ground:
+            self.vel_y += self.gravity * 6
+
+    def apply_horizontal_movement(self, wish_dir):
+        accel = self.accel_ground if self.on_ground else self.accel_air
+        self.vel_x += wish_dir * accel
+
+        if self.on_ground and wish_dir == 0:
+            self.vel_x *= self.friction
+
+        self.vel_x = max(-self.max_speed, min(self.vel_x, self.max_speed))
+
+    def apply_gravity(self):
+        if self.on_wall and not self.on_ground and self.vel_y > self.wall_slide_speed:
+            self.vel_y = self.wall_slide_speed
+        else:
+            self.vel_y += self.gravity
+
+        self.vel_y = min(self.vel_y, self.max_fall_speed)
+
+    def update(self, colliders):
+        self.on_ground = False
+        self.on_wall = False
+        self.wall_dir = 0
+
+        keys = pygame.key.get_pressed()
+
+        wish_dir = self.get_wish_dir(keys)                   # mouvement hori
+        self.apply_horizontal_movement(wish_dir)
+
+        self.rect.x += self.vel_x                #mouvement hori + collision
+        for c in colliders:
+            v_x, wall, w_dir = resolve_collision_x(self.rect, c, self.vel_x)
+            self.vel_x = v_x
+            if wall:
+                self.on_wall = True
+                self.wall_dir = w_dir
+                self.can_wall_jump = True
+
+        self.apply_gravity()
+
+        self.rect.y += self.vel_y           #mouvement verti + collision
+        for c in colliders:
+            v_y, ground = resolve_collision_y(self.rect, c, self.vel_y)
+            self.vel_y = v_y
+            if ground:
+                self.on_ground = True     # Si on touche le sol
+
+        self.handle_jump(keys)       # Saut et wall jump après collisions
+        self.handle_drop(keys)
+        self.trail.update(1 / 60)
+
+    def draw(self, screen):
+        self.trail.draw(screen)
+        pygame.draw.rect(screen, (200, 50, 50), self.rect)
