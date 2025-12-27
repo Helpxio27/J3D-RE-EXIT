@@ -18,7 +18,7 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
 
-    self.colliders = [ pygame.Rect(0, SCREEN_HEIGHT - 40, SCREEN_WIDTH, 40),   # sol
+        self.colliders = [ pygame.Rect(0, SCREEN_HEIGHT - 40, SCREEN_WIDTH, 40),   # sol
                         pygame.Rect(0, 0, 40, SCREEN_HEIGHT),                  # mur gauche
                         pygame.Rect(SCREEN_WIDTH - 40, 0, 40, SCREEN_HEIGHT),  # mur droit
                         pygame.Rect(0, 0, SCREEN_WIDTH, 40), ]                  # plafond
@@ -41,40 +41,9 @@ class Game:
                 self.running = False
 
     def update(self):
-        self.player.update() # Calls the function taking the inputs
-
-        # Temporary floor collision
-        if self.player.rect.bottom >= self.floor_y:
-            self.player.rect.bottom = self.floor_y
-            self.player.vel_y = 0
-            self.player.on_ground = True
-
-    '''
-    def update(self):
-        
         self.player.update(self.colliders)     # Passe les colliders pour collision et wall slide/jump
-    '''
     
-    def draw(self):
-        self.screen.fill(BACKGROUND_COLOR)
-        self.player.draw(self.screen)
-        
-        # Temporary visual floor
-        pygame.draw.rect(
-            self.screen,
-            (244, 244, 244), 
-            (0, self.floor_y, SCREEN_WIDTH, 50)
-        )
-
-        pygame.draw.rect(
-            self.screen,
-            (244, 244, 244), 
-            (0, 70, 40, 50)
-        )
-        
-        pygame.display.flip()
-
-    '''
+    
     def draw(self):
         self.screen.fill(BACKGROUND_COLOR)
         
@@ -83,5 +52,5 @@ class Game:
         
         self.player.draw(self.screen)          # Dessin du joueur
         pygame.display.flip()
-    '''
+    
 

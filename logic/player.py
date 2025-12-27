@@ -1,7 +1,6 @@
 import pygame
 from particles import ParticleEmitter
-from collision import check_rect_collision # pretty damn useless function
-from collision import resolve_platform_collision # AABB collision resolution for platforms
+from collision import resolve_collision_x, resolve_collision_y
 
 class Player:
     def __init__(self, x, y): #INIT FUNCTION
@@ -27,17 +26,17 @@ class Player:
         self.trail = ParticleEmitter()
 
         #WAll 
-        self.on_wall= False    #le joueur touche un mur
-        self.wall_dir= 0       #mur gquche = -1 et mur droit = 1 
-        self.wall_slide_speed= 4   #vitesse de la chute
+        self.on_wall = False    #le joueur touche un mur
+        self.wall_dir = 0       #mur gauche = -1 et mur droit = 1 
+        self.wall_slide_speed = 4   #vitesse de la chute
         #wall jump
-        self.wall_jump=pygame.Vector2(12,-15)
-        self.can_wall_jump= True
+        self.wall_jump = pygame.Vector2(12,-15)
+        self.can_wall_jump = True
         #jump buffer
-        self.jump_buffer= 0
-        self.jump_buffer_time= 8 #frames
+        self.jump_buffer = 0
+        self.jump_buffer_time = 8 #frames
 
-        self.trail= ParticuleEmitter()
+        self.trail = ParticleEmitter()
     
     
     # ================================== # 
@@ -116,7 +115,7 @@ class Player:
             self.jump_buffer = 0
     # ================================== #
     # UPDATE AND DRAW (low level)
-    def update(self):
+    def update(self, colliders):
         self.on_ground = False         # pour reset
         self.on_wall = False
         self.wall_dir = 0
@@ -134,15 +133,7 @@ class Player:
         for c in colliders:                       # collision verti
             self.vel_y, self.on_ground = resolve_collision_y(self.rect, c, self.vel_y)
 
-        # Collision with platforms (NOT YET FINISHED !!!)
-        # Need platform.py and collision.py for this to work
-        #for plat in platform_list:
-        #    self.vel_x, self.vel_y, self.on_ground = resolve_platform_collision(
-        #        self.rect, plat.rect, self.vel_x, self.vel_y
-        #    )
 
-        # Trail emitter update
-        # NEED REWORK for better particle effect
         speed = abs(self.vel_x) + abs(self.vel_y)
         if speed > 5:
             self.trail.emit(
@@ -163,38 +154,3 @@ class Player:
 
         # Basic Drawing of player
         pygame.draw.rect(screen, (200, 50, 50), self.rect)
-
-
-
-# Old Input Handling 
-
-# def handle_input(self):
-    #     keys = pygame.key.get_pressed()
-
-
-    #     # Directional Input :
-    #     # wish_dir = -1   left
-    #     # wish_dir = 1    right
-    #     # wish_dir = 0    no input
-        
-    #     wish_dir = 0
-    #     if keys[pygame.K_a]:
-    #         wish_dir -= 1
-    #     if keys[pygame.K_d]:
-    #         wish_dir += 1
-        
-    #     accel = self.accel_ground if self.on_ground else self.accel_air
-       
-    #     self.vel_x = max(-self.max_speed, min(self.vel_x, self.max_speed))
-        
-    #     self.vel_x += wish_dir * accel
-
-    #     # Apply friction ONLY on ground and only if no input
-    #     if self.on_ground and wish_dir == 0:
-    #         self.vel_x *= self.friction
-        
-    #     self.vel_x = max(-self.max_speed, min(self.vel_x, self.max_speed))
-
-    #     if keys[pygame.K_SPACE] and self.on_ground:
-    #         self.vel_y = self.jump_strength
-    #         self.on_ground = False

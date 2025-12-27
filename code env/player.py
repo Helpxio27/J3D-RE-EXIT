@@ -1,0 +1,150 @@
+import pygame 
+from pygame.math import Vector2
+
+class Player(pygame.sprite.Sprite):
+    def __init__(self, pos , color, controls, name="Player"):
+        super().__init__()
+        self.image = pygame.Surface((32, 32))
+        self.image.fill(color)
+        self.rect = self.image.get_rect(topleft=pos)
+        
+        self.pos=Vector2(pos)
+        self.vit=Vector2(0,0)
+        self.accel=1.1
+        self.max_vit=7
+        self.gravity=0.7
+        self.jump_force=-13
+        self.sur_terre=False
+
+        self.dash_vit=18
+        self.dash_duree=10
+        self.dash_cd=0
+        self.dash_timer=0
+        self.dash_tt=3
+        self.dashing=False
+
+        self.on_wall=False
+        self.wall_dir=0
+        self.wall_slide_vit=3
+        self.wall_jump_force=Vector2(10,-13)
+        self.autorise_wall_jump=True
+
+        self.coyote_timer=0
+        self.jump_buffer=0
+
+        self.controls = controls
+        self.name = name
+        
+    def handle_input(self, keys):
+        if keys[self.controls["left"]] :
+            self.vit.x = max(self.vit.x - self.accel, -self.max_vit)
+        elif keys[self.controls["right"]] :
+            self.vit.x = min(self.vit.x + self.accel, self.max_vit)
+        else:
+            self.vit.x *= 0.8  # Friction
+
+        if keys[self.controls["jump"]]:
+            self.jump_buffer = 10
+
+        if keys[self.controls["dash"]]:
+            self.try_dash(keys)
+            
+    def appli_gravite(self):
+        if self.on_wall and not self.sur_terre and self.vit.y > self.wall_slide_vit:
+            self.vit.y = self.wall_slide_vit
+        else:
+            self.vit.y += self.gravity
+
+    def try_dash(self, keys):
+        if self.dashing or self.dash_tt <= 0 or self.dash_cd > 0:
+            return
+
+        if keys[self.controls["left"]]:
+            direction = Vector2(-1, 0)
+        elif keys[self.controls["right"]]:
+            direction = Vector2(1, 0)
+        else:
+            return
+
+        self.vit = direction * self.dash_vit
+        self.dashing = True
+        self.dash_timer = self.dash_duree
+        self.dash_tt -= 1
+        self.dash_cd = 30
+
+
+    def jump(self):
+        self.vit.y=self.jump_force
+        self.sur_terre=False
+        self.coyote_timer=0
+
+    # Problem on keys -> Keys is not defined.
+    # "and uhh goddam this code is complex" - Helpxio
+
+    def try_wall_jump(self): 
+        if self.on_wall and self.jump_buffer > 0 and self.autorise_wall_jump:
+            if self.wall_dir != 0:
+                self.vit = Vector2(
+                    -self.wall_dir * self.wall_jump_force.x,
+                    self.wall_jump_force.y
+                )
+            self.autorise_wall_jump=False
+            self.jump_buffer=0
+    
+    def check_collisions(self,platforme):
+        self.on_wall=False
+        self.sur_terre=False
+        self.wall_dir=0
+
+        for p in platforme:
+            if self.rect.colliderect(p.rect):
+                if self.vit.y>0:
+                    self.rect.bottom=p.rect.top 
+                    self.vit.y=0
+                    self.sur_terre=True
+                    self.coyote_timer=10
+                elif self.vit.y<0:
+                    self.rect.top=p.rect.bottom
+                    self.vit.y=0
+        
+        for p in platforme:
+            if self.rect.colliderect(p.rect):
+                if self.vit.x>0:
+                    self.rect.right=p.rect.left
+                    self.vit.x=0
+                    self.on_wall=True
+                    self.wall_dir=1
+                elif self.vit.x<0:
+                    self.rect.left=p.rect.right
+                    self.vit.x=0
+                    self.on_wall=True
+                    self.wall_dir=-1
+        self.pos = Vector2(self.rect.topleft)
+
+    
+    def update(self, keys, platforme):
+        self.handle_input(keys)
+        if self.dashing:
+            self.dash_timer-=1
+            if self.dash_timer<=0:
+                self.dashing=False
+        
+        else:
+            self.appli_gravite()
+            
+        if self.jump_buffer > 0 and self.coyote_timer > 0 and not self.on_wall:
+            self.jump()
+            self.jump_buffer=0
+        
+        self.try_wall_jump()
+        self.pos += self.vit
+        self.rect.topleft = self.pos
+
+        self.check_collisions(platforme)
+        
+        self.coyote_timer=max(0, self.coyote_timer -1)
+        self.jump_buffer=max(0, self.jump_buffer -1)
+        self.dash_cd=max(0, self.dash_cd -1)
+
+        if self.sur_terre:
+            self.autorise_wall_jump=True
