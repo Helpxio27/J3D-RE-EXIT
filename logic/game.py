@@ -21,10 +21,10 @@ class Game:
         self.colliders = [ pygame.Rect(0, SCREEN_HEIGHT - 40, SCREEN_WIDTH, 40),   # sol
                         pygame.Rect(0, 0, 40, SCREEN_HEIGHT),                  # mur gauche
                         pygame.Rect(SCREEN_WIDTH - 40, 0, 40, SCREEN_HEIGHT),  # mur droit
-                        pygame.Rect(0, 0, SCREEN_WIDTH, 40), ]                  # plafond
-                        #pygame.Rect(300, 350, 200, 30),
-                        #pygame.Rect(500, 200, 40, 200), ce sont des obstacles internes si vous voulez testez
-
+                        pygame.Rect(0, 0, SCREEN_WIDTH, 40),                   # plafond
+                        pygame.Rect(300, 350, 200, 30),
+                        pygame.Rect(500, 200, 40, 200), # ce sont des obstacles internes si vous voulez testez
+                        ]
     def run(self):
         while self.running:
             self.clock.tick(FPS)
