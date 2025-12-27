@@ -1,0 +1,44 @@
+import pygame
+import random
+
+class Particle:
+    def __init__(self, pos, vel, lifetime, color, size):
+        self.pos = pygame.Vector2(pos)
+        self.vel = pygame.Vector2(vel)
+        self.lifetime = lifetime
+        self.color = color
+        self.size = size
+
+    def update(self, dt):
+        self.lifetime -= dt
+        self.pos += self.vel * dt
+
+    def draw(self, screen):
+        if self.lifetime > 0:
+            pygame.draw.circle(screen, self.color, self.pos, self.size)
+
+
+class ParticleEmitter:
+    def __init__(self):
+        self.particles = []
+
+    def emit(self, pos, vel, amount, spread, color, size, lifetime):
+        vel = pygame.Vector2(vel)
+        for _ in range(amount):
+            rand_vel = pygame.Vector2(
+                vel.x + random.uniform(-spread, spread),
+                vel.y + random.uniform(-spread, spread)
+            )
+            self.particles.append(
+                Particle(pos, rand_vel, lifetime, color, size)
+            )
+
+    def update(self, dt):
+        for p in self.particles[:]:
+            p.update(dt)
+            if p.lifetime <= 0:
+                self.particles.remove(p)
+
+    def draw(self, screen):
+        for p in self.particles:
+            p.draw(screen)
