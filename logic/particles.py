@@ -1,7 +1,6 @@
 import pygame
 import random
 
-
 class Particle:
     def __init__(self, pos, vel, lifetime, color, size):
         self.pos = pygame.Vector2(pos) # two var for position (x,y)
