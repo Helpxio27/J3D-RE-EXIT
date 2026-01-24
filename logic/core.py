@@ -1,25 +1,25 @@
 import pygame
 import sys
-import os
 from settings import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BACKGROUND_COLOR
 from player import Player
 from level import Level
+import os
 # TAG IMPLEMENTATION
 from collision import circle_rect_collision
 
 # TILESET IMPLEMENTATION
 import json
 
+# Making sure the 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and PyInstaller """
     try:
         # PyInstaller stores files in _MEIPASS
         base_path = sys._MEIPASS
     except AttributeError:
-        # Use the project root (parent of 'logic' folder)
-        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        base_path = os.path.abspath("..")  # adjust if main.py is in logic/
 
-    return os.path.join(base_path, *relative_path.split("/"))
+    return os.path.join(base_path, relative_path)
 
 class Game:
     def __init__(self):
@@ -29,7 +29,7 @@ class Game:
         pygame.display.set_caption("My First Platformer") # Set the window title
         
         self.background = pygame.transform.scale(
-            pygame.image.load(resource_path("assets/2 Background/Background.png")),
+            pygame.image.load("assets/2 Background/Background.png"),
             (SCREEN_WIDTH, SCREEN_HEIGHT)
         )
 
@@ -61,10 +61,7 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
 
-        self.level = Level(
-            resource_path("assets/maps/lv1.tmj"),
-            resource_path("assets/maps/tileset_lv1.png")
-        )
+        self.level = Level("assets/maps/lv1.tmj", "assets/maps/tileset_lv1.png")
 
     def run(self):
         while self.running:

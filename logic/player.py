@@ -36,7 +36,7 @@ class Player:
         
         # Tagging Logic
         self.is_tagger = is_tagger
-        self.tag_radius = 60
+        self.tag_radius = 30
 
         # Wall slide mechanics
         self.on_wall = False
@@ -148,7 +148,7 @@ class Player:
         self.vel_y, self.on_ground = resolve_vertical(
             self.rect, obstacles, self.vel_y
         )
-
+        
         # RESET WALL JUMP WHEN LANDED
         if self.on_ground:
             self.can_wall_jump = True
@@ -184,7 +184,8 @@ class Player:
             self.rect.x = 300
             self.rect.y = 300
 
-        print("Tag Cooldown", self.tagback_cooldown)
+        # Test Tag Cooldown
+        #print("Tag Cooldown", self.tagback_cooldown)
 
     def draw(self, screen):
         # If tagger
