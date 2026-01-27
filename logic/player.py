@@ -129,7 +129,7 @@ class Player:
     #     self.vel_y = min(self.vel_y, max_fall_speed)
     # # ================================== #
     # UPDATE AND DRAW (low level)
-    def update(self, obstacles):
+    def update(self, obstacles, render_dt):
         keys = pygame.key.get_pressed()
         self.handle_input()
         self.apply_gravity()
@@ -173,7 +173,8 @@ class Player:
                 lifetime=0.5
             )
 
-        self.trail.update(1 / 60)
+        #trail but updates at tickrate
+        self.trail.update(render_dt)
 
         # Tag Cooldown decreaser
         if self.tagback_cooldown > 0:

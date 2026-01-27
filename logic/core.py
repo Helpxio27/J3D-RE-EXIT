@@ -1,6 +1,13 @@
 import pygame
 import sys
-from settings import SCREEN_WIDTH, SCREEN_HEIGHT, FPS, BACKGROUND_COLOR
+# ALL settings
+from settings import (
+    SCREEN_WIDTH,
+    SCREEN_HEIGHT,
+    FIXED_DT,
+    RENDER_FPS,
+    BACKGROUND_COLOR
+)
 from player import Player
 from level import Level
 import os
@@ -33,9 +40,10 @@ class Game:
             (SCREEN_WIDTH, SCREEN_HEIGHT)
         )
 
-        # Update Cycle
-        # self.player = Player(300, 300)
-        
+        # FPS SHOWER
+        self.fps_timer = 0.0
+        self.fps_frames = 0
+
         self.players = [
             Player(
                 500, 500,
@@ -64,23 +72,50 @@ class Game:
         self.level = Level("assets/maps/lv1.tmj", "assets/maps/tileset_lv1.png")
 
     def run(self):
+        accumulator = 0.0
+        last_time = pygame.time.get_ticks() / 1000.0
+
         while self.running:
-            self.clock.tick(FPS)
+            now = pygame.time.get_ticks() / 1000.0
+            frame_time = now - last_time
+            last_time = now
+            self.render_dt = frame_time
+
+            # Prevent spiral of death
+            frame_time = min(frame_time, 0.25)
+
+            accumulator += frame_time
+
             self.handle_events()
-            self.update()
-            self.draw()
+
+            # 🔒 FIXED SIMULATION
+            while accumulator >= FIXED_DT:
+                self.update()       # physics + game logic
+                accumulator -= FIXED_DT
+
+            self.draw()            # rendering only
+            # FPS COUNTER (render FPS)
+            self.fps_timer += frame_time
+            self.fps_frames += 1
+
+            if self.fps_timer >= 1.0:
+                print(f"FPS: {self.fps_frames}")
+                self.fps_timer -= 1.0
+                self.fps_frames = 0
+            
+            self.clock.tick(RENDER_FPS)
 
         self.quit()
-
+    
     def handle_events(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
 
     def update(self):
         # 1. Update all players
         for p in self.players:
-            p.update(self.level.walls)
+            p.update(self.level.walls, self.render_dt)
 
         # 2. Tag logic
         tagger = None
