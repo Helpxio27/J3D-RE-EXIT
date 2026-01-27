@@ -170,7 +170,8 @@ class Player:
                 spread=1,
                 color=(200, 200, 200),
                 size=3,
-                lifetime=0.5
+                lifetime=0.5,
+                alpha=120
             )
 
         #trail but updates at tickrate
