@@ -164,19 +164,17 @@ class Player:
         if speed > 5:
             self.trail.emit(
                 pos=(self.rect.centerx, self.rect.centery),
-                # vel=(10 * self.vel_x , 10 * self.vel_x),
-                vel=(0,0),
-                amount=2,
-                spread=1,
-                color=(200, 200, 200),
-                size=3,
-                lifetime=0.5,
-                alpha=120
+                vel=(0, 0),
+                amount=3,
+                spread=1.5,
+                color=(255, 255, 255),
+                size=4,
+                lifetime=0.1,
+                alpha=150,
+                fade_curve='ease-out'
             )
-
-        #trail but updates at tickrate
         self.trail.update(render_dt)
-
+        
         # Tag Cooldown decreaser
         if self.tagback_cooldown > 0:
             self.tagback_cooldown -= 1
@@ -201,6 +199,7 @@ class Player:
             )
 
         # Trail emitter draw
+        #self.trail.draw(screen, blend_mode=pygame.BLEND_ADD)  # glowy effect
         self.trail.draw(screen)
 
         # Basic Drawing of player
