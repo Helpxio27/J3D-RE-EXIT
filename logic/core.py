@@ -31,6 +31,9 @@ def resource_path(relative_path):
 class Game:
     def __init__(self):
         pygame.init()
+        
+        self.in_menu = True
+
         # Screen Making, and showing
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT)) # Create the game window
         pygame.display.set_caption("My First Platformer") # Set the window title
@@ -88,12 +91,17 @@ class Game:
 
             self.handle_events()
 
-            # 🔒 FIXED SIMULATION
-            while accumulator >= FIXED_DT:
-                self.update()       # physics + game logic
-                accumulator -= FIXED_DT
+            if self.in_menu:
+                # Draw menu instead of updating game
+                self.draw_menu()
+            else:
+                # FIXED SIMULATION
+                while accumulator >= FIXED_DT:
+                    self.update()       # physics + game logic
+                    accumulator -= FIXED_DT
 
-            self.draw()            # rendering only
+                self.draw()            # rendering only
+
             # FPS COUNTER (render FPS)
             self.fps_timer += frame_time
             self.fps_frames += 1
@@ -102,8 +110,8 @@ class Game:
                 print(f"FPS: {self.fps_frames}")
                 self.fps_timer -= 1.0
                 self.fps_frames = 0
-            
-            self.clock.tick(RENDER_FPS)
+
+            self.clock.tick(RENDER_FPS) 
 
         self.quit()
     
@@ -142,6 +150,23 @@ class Game:
                 # Apply tagback cooldown to the old tagger
                 tagger.tagback_cooldown = tagger.tagback_cooldown_time
     
+    def draw_menu(self):
+        self.screen.fill((20, 20, 20))
+        font = pygame.font.SysFont(None, 48)
+        text = font.render("ENTER = Play | ESC = Quit", True, (255, 255, 255))
+        self.screen.blit(text, (100, 100))
+        pygame.display.flip()
+
+    def handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+            elif self.in_menu and event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    self.in_menu = False
+                elif event.key == pygame.K_ESCAPE:
+                    self.running = False
+
     def draw(self):
         # self.screen.fill(BACKGROUND_COLOR)
         # Instead of screen.fill(...)
