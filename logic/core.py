@@ -31,9 +31,11 @@ def resource_path(relative_path):
 class Game:
     def __init__(self):
         pygame.init()
-        
-        self.in_menu = True
 
+        # MENU TESTING FUNCTIONALITY
+        self.paused = False
+        self.in_menu = True
+    
         # Screen Making, and showing
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT)) # Create the game window
         pygame.display.set_caption("My First Platformer") # Set the window title
@@ -84,7 +86,7 @@ class Game:
             last_time = now
             self.render_dt = frame_time
 
-            # Prevent spiral of death
+            # wha?
             frame_time = min(frame_time, 0.25)
 
             accumulator += frame_time
@@ -92,15 +94,16 @@ class Game:
             self.handle_events()
 
             if self.in_menu:
-                # Draw menu instead of updating game
                 self.draw_menu()
-            else:
-                # FIXED SIMULATION
-                while accumulator >= FIXED_DT:
-                    self.update()       # physics + game logic
-                    accumulator -= FIXED_DT
 
-                self.draw()            # rendering only
+            else:
+                if not self.paused:
+                    while accumulator >= FIXED_DT:
+                        self.update()
+                        accumulator -= FIXED_DT
+                    self.draw()
+                else:
+                    self.draw_pause_overlay()
 
             # FPS COUNTER (render FPS)
             self.fps_timer += frame_time
@@ -115,17 +118,12 @@ class Game:
 
         self.quit()
     
-    def handle_events(self):
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.running = False
-
     def update(self):
         # 1. Update all players
         for p in self.players:
             p.update(self.level.walls, self.render_dt)
 
-        # 2. Tag logic
+        # 2. Tag logic (to put somewhere else in the future)
         tagger = None
         runner = None
 
@@ -157,15 +155,38 @@ class Game:
         self.screen.blit(text, (100, 100))
         pygame.display.flip()
 
+    def draw_pause_overlay(self):
+        font = pygame.font.SysFont(None, 48)
+        text = font.render("PAUSED | ESC = Resume | Q = Menu", True, (255, 255, 255))
+        self.screen.blit(text, (100, 100))
+        pygame.display.flip()
+
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-            elif self.in_menu and event.type == pygame.KEYDOWN:
+
+            # MENU controls (when in menu)
+            elif self.in_menu and event.type == pygame.KEYDOWN: 
                 if event.key == pygame.K_RETURN:
                     self.in_menu = False
                 elif event.key == pygame.K_ESCAPE:
                     self.running = False
+
+            # GAME controls (when not in menu, you can pause with esc, and go back to menu with q)
+            elif not self.in_menu and event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    self.paused = not self.paused
+                if self.paused and event.key == pygame.K_q:
+                    self.reset_to_menu()
+    def reset_to_menu(self):
+        self.in_menu = True
+        self.paused = False
+
+        # Recreate game state cleanly
+        self.__init__()
+
+        # TEMPORARY CODE
 
     def draw(self):
         # self.screen.fill(BACKGROUND_COLOR)

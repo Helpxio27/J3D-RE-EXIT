@@ -3,6 +3,7 @@ import json
 
 # This is probably the hardest code I've ever fucking done man
 # Shoot me already
+# Do not ask me to redo it, I will not be able
 
 class Level:
     def __init__(self, map_path, tileset_path):
@@ -18,7 +19,7 @@ class Level:
         self.tiles = self.load_tileset(tileset_path, self.tile_size, self.tile_size)
 
         # --- Build collision walls ---
-        # We'll assume the first layer is the collision layer
+        # first layer is the collision layer
         collision_layer = self.map_data['layers'][0]
         tile_ids = collision_layer['data']
 
