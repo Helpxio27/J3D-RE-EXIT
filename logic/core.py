@@ -85,21 +85,31 @@ class Game:
             frame_time = now - last_time
             last_time = now
             self.render_dt = frame_time
-
-            # wha?
             frame_time = min(frame_time, 0.25)
-
             accumulator += frame_time
-
             self.handle_events()
+
+            # Build per-player inputs **for this frame**
+            inputs_per_player = []
+            keys = pygame.key.get_pressed()
+            for p in self.players:
+                inputs = {
+                    "left": keys[p.controls["left"]],
+                    "right": keys[p.controls["right"]],
+                    "jump": keys[p.controls["jump"]],
+                    "drop": keys[p.controls["drop"]],
+                }
+                inputs_per_player.append(inputs)
+
+            # Debug print
+            print("Current inputs:", inputs_per_player)
 
             if self.in_menu:
                 self.draw_menu()
-
             else:
                 if not self.paused:
                     while accumulator >= FIXED_DT:
-                        self.update()
+                        self.update(inputs_per_player)  # <-- pass the inputs here!
                         accumulator -= FIXED_DT
                     self.draw()
                 else:
@@ -118,11 +128,12 @@ class Game:
 
         self.quit()
     
-    def update(self):
+    def update(self, inputs_per_player):
         # 1. Update all players
-        for p in self.players:
-            p.update(self.level.walls, self.render_dt)
-
+        print("Server is seeing:", inputs_per_player)
+        for i, p in enumerate(self.players):
+            p.update(self.level.walls, self.render_dt, inputs_per_player[i])
+        
         # 2. Tag logic (to put somewhere else in the future)
         tagger = None
         runner = None

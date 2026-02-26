@@ -53,34 +53,32 @@ class Player:
 
     # ================================== # 
     # HELPER FUNCTION``
-    def get_wish_dir(self, keys):
         # Directional Input :
         # wish_dir = -1   left
         # wish_dir = 1    right
         # wish_dir = 0    no input
+    def get_wish_dir(self, inputs):
         dir = 0
-        if keys[self.controls["left"]]:
+        if inputs["left"]:
             dir -= 1
-        if keys[self.controls["right"]]:
+        if inputs["right"]:
             dir += 1
         return dir
     # ================================== # 
     # HANDLING INPUT
-    def handle_input(self): 
-        keys = pygame.key.get_pressed()
-
-        wish_dir = self.get_wish_dir(keys)
+    def handle_input(self, inputs): 
+        wish_dir = self.get_wish_dir(inputs)
         self.apply_horizontal_movement(wish_dir)
-        self.handle_jump(keys)
-        self.handle_drop(keys)
+        self.handle_jump(inputs)
+        self.handle_drop(inputs)
 
-    def handle_jump(self, keys):
-        if keys[self.controls["jump"]] and self.on_ground:
+    def handle_jump(self, inputs):
+        if inputs["jump"] and self.on_ground:
             self.vel_y = self.jump_strength
             self.on_ground = False
 
-    def handle_drop(self, keys):
-        if keys[self.controls["drop"]] and not self.on_ground:
+    def handle_drop(self, inputs):
+        if inputs["drop"] and not self.on_ground:
             self.vel_y += self.gravity * 6
     # ================================== #
     # APPLICATION OF MOVEMENT
@@ -111,9 +109,9 @@ class Player:
         else:
             self.vel_y += self.gravity
 
-    def try_wall_jump(self, keys):
+    def try_wall_jump(self, inputs):
         if (
-            keys[self.controls["jump"]]
+            inputs["jump"]
             and self.on_wall
             and not self.on_ground
             and self.can_wall_jump
@@ -121,7 +119,6 @@ class Player:
             self.vel_x = -self.wall_dir * self.wall_jump_x
             self.vel_y = self.wall_jump_y
             self.can_wall_jump = False
-    
     # def apply_gravity(self):
     #     self.vel_y += self.gravity
 
@@ -129,13 +126,10 @@ class Player:
     #     self.vel_y = min(self.vel_y, max_fall_speed)
     # # ================================== #
     # UPDATE AND DRAW (low level)
-    def update(self, obstacles, render_dt):
-        keys = pygame.key.get_pressed()
-        self.handle_input()
+    def update(self, obstacles, render_dt, inputs):
+        self.handle_input(inputs)
         self.apply_gravity()
-
-        # Try wall jump
-        self.try_wall_jump(keys)
+        self.try_wall_jump(inputs)
 
         # Horizontal movement
         self.rect.x += self.vel_x
