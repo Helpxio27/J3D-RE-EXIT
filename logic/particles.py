@@ -3,8 +3,8 @@ import random
 import math
 
 class Particle:
-    """Single particle"""
-    _surface_cache = {}  # cache for particle surfaces by (size, color)
+    """Individual particle with size shrinking and alpha fading effects"""
+    _surface_cache = {}  
 
     def __init__(self, pos, vel, lifetime, color, size, alpha=255, fade_curve='linear'):
         self.pos = pygame.Vector2(pos)
@@ -12,25 +12,22 @@ class Particle:
         self.lifetime = lifetime
         self.start_lifetime = lifetime
         self.color = color
-        self.size = size
+        self.start_size = size
         self.alpha = alpha
         self.fade_curve = fade_curve
-
-        # Pre-rendered surface from cache
-        key = (size, color)
-        if key not in Particle._surface_cache:
-            surf = pygame.Surface((size*2, size*2), pygame.SRCALPHA)
-            pygame.draw.circle(surf, (*color, 255), (size, size), size)
-            Particle._surface_cache[key] = surf
-        self.surf = Particle._surface_cache[key]
+        self.current_size = size
 
     def update(self, dt):
         self.lifetime -= dt
         self.pos += self.vel * dt
 
+        # Calculate life ratio (from 1.0 down to 0.0)
         life_ratio = max(self.lifetime / self.start_lifetime, 0)
 
-        # fade curve
+        # 1. SIZE REDUCTION (Dissipation effect)
+        self.current_size = self.start_size * life_ratio
+
+        # 2. FADE CURVE (Alpha transparency)
         if self.fade_curve == 'linear':
             self.current_alpha = int(self.alpha * life_ratio)
         elif self.fade_curve == 'ease-out':
@@ -41,23 +38,30 @@ class Particle:
             self.current_alpha = int(self.alpha * life_ratio)
 
     def draw(self, surface, blend_mode=0):
-        if self.lifetime <= 0:
+        if self.lifetime <= 0 or self.current_size < 0.5:
             return
 
-        # blit the cached surface with alpha
-        temp_surf = self.surf.copy()
-        temp_surf.fill((255, 255, 255, self.current_alpha), special_flags=pygame.BLEND_RGBA_MULT)
-        surface.blit(temp_surf, (self.pos.x - self.size, self.pos.y - self.size), special_flags=blend_mode)
-
+        # Draw circle directly (smoother for dynamic resizing)
+        s = int(self.current_size)
+        if s < 1: s = 1
+        
+        # Draw the vaporous particle
+        pygame.draw.circle(
+            surface, 
+            (*self.color, self.current_alpha), 
+            (int(self.pos.x), int(self.pos.y)), 
+            s
+        )
 
 class ParticleEmitter:
-    """Manages a pool of particles"""
+    """Optimized particle manager"""
     def __init__(self):
         self.particles = []
 
     def emit(self, pos, vel, amount=1, spread=0, color=(255,255,255), size=5, lifetime=1.0, alpha=255, fade_curve='linear'):
         vel = pygame.Vector2(vel)
         for _ in range(amount):
+            # Add random spread to the direction
             rand_vel = pygame.Vector2(
                 vel.x + random.uniform(-spread, spread),
                 vel.y + random.uniform(-spread, spread)
@@ -69,80 +73,79 @@ class ParticleEmitter:
     def update(self, dt):
         for p in self.particles:
             p.update(dt)
-        # fast removal of dead particles
+        # Remove dead particles
         self.particles = [p for p in self.particles if p.lifetime > 0]
 
     def draw(self, surface, blend_mode=0):
         for p in self.particles:
             p.draw(surface, blend_mode)
 
+# --- PLAYER CLASSES FOR DYNAMIC VISUALS ---
 
-# class Particle:
-#     def __init__(self, pos, vel, lifetime, color, size, alpha=255):
-#         self.pos = pygame.Vector2(pos) # two var for position (x,y)
-#         self.vel = pygame.Vector2(vel) # two var for velocity (x,y)
-#         self.lifetime = lifetime # life time of particle in frames
-#         self.start_lifetime = lifetime # Starting of the lifetime
-#         self.color = color # color of particle
-#         self.alpha = alpha # Fading coloring (0-255)
-#         self.size = size # size (radius) of particle
-#         self.current_alpha = alpha # Current alpha changing with lifetime
-
-#     def update(self, dt):
-#         self.lifetime -= dt # decrease lifetime by delta time
-#         self.pos += self.vel * dt # update position based on velocity and delta time
-
-#         # Linear alpha fade-out
-#         life_ratio = max(self.lifetime / self.start_lifetime, 0)
-#         self.current_alpha = int(self.alpha * life_ratio)
-
-#     def draw(self, surface):
-#         if self.lifetime <= 0:
-#             return
-
-#         # Create per-particle surface
-#         diameter = self.size * 2
-#         particle_surf = pygame.Surface((diameter, diameter), pygame.SRCALPHA)
-
-#         pygame.draw.circle(
-#             particle_surf,
-#             (*self.color, self.current_alpha),
-#             (self.size, self.size),
-#             self.size
-#         )
-
-#         surface.blit(
-#             particle_surf,
-#             (self.pos.x - self.size, self.pos.y - self.size)
-#         )
-
-
-# class ParticleEmitter: # box with alot of particles
-#     def __init__(self):
-#         self.particles = [] # list of particles
-
-#     def emit(self, pos, vel, amount, spread, color, size, lifetime, alpha=255):
-#         vel = pygame.Vector2(vel) # making vel a vector2
+class Player:
+    def __init__(self, x, y, color=(255, 70, 70)):
+        self.rect = pygame.Rect(x, y, 40, 40)
+        self.vel = pygame.Vector2(0, 0)
+        self.on_ground = False
+        self.speed = 5
+        self.jump_force = -15
         
-#         for _ in range(amount): # create 'amount' of particles
-#             rand_vel = pygame.Vector2(
-#                 vel.x + random.uniform(-spread, spread),
-#                 vel.y + random.uniform(-spread, spread)
-#             ) # making random ass velocity value to be called in particle
-#             self.particles.append(
-#                 Particle(pos, rand_vel, lifetime, color, size, alpha)
-#             ) # puts particle in list of particles managed
+        # Personalization
+        self.color = color
+        self.custom_image = None
+        self.angle = 0  # For the Tilt effect
+        self.is_tagger = False
+        self.tag_radius = 35
 
-#     def update(self, dt):
-#         for p in self.particles[:]:
-#             p.update(dt)
-#             if p.lifetime <= 0:
-#                 self.particles.remove(p)
+    def jump(self, emitter):
+        """Triggers a jump with a vaporous smoke explosion"""
+        if self.on_ground:
+            self.vel.y = self.jump_force
+            self.on_ground = False
+            
+            # --- IMPROVED SMOKE EFFECT ---
+            if emitter:
+                for _ in range(15):  # Particle count
+                    # Upward and outward explosion
+                    vx = random.uniform(-4, 4)
+                    vy = random.uniform(-1, 2)
+                    emitter.emit(
+                        pos=(self.rect.centerx, self.rect.bottom),
+                        vel=(vx, vy),
+                        amount=1, 
+                        spread=1, 
+                        color=(220, 220, 220), 
+                        size=random.randint(4, 10), # Large particles that shrink
+                        lifetime=random.uniform(0.4, 0.8),
+                        alpha=180,
+                        fade_curve='ease-out'
+                    )
 
-#     def draw(self, screen):
-#         for p in self.particles:
-#             p.draw(screen)
+    def update_animation(self, vel_x):
+        """Tilts the cube and handles visual effects"""
+        # Tilt: The cube leans based on horizontal velocity
+        target_angle = -vel_x * 2.5
+        self.angle += (target_angle - self.angle) * 0.15
 
+    def draw(self, screen):
+        # 1. Tagger Halo (Luminous Pulsation)
+        if self.is_tagger:
+            time = pygame.time.get_ticks() * 0.01
+            pulse = abs(math.sin(time)) * 6
+            pygame.draw.circle(screen, (255, 255, 0), self.rect.center, self.tag_radius + pulse, 3)
 
-# for _ in range(amount):
-# the _ is just a naming convention telling us that we don't care about the variable
+        # 2. Prepare the cube surface
+        surf = pygame.Surface((40, 40), pygame.SRCALPHA)
+        if self.custom_image:
+            img_scaled = pygame.transform.scale(self.custom_image, (40, 40))
+            surf.blit(img_scaled, (0, 0))
+        else:
+            # Stylized cube with border
+            pygame.draw.rect(surf, self.color, (0, 0, 40, 40), border_radius=6)
+            pygame.draw.rect(surf, (255, 255, 255, 60), (0, 0, 40, 40), 2, border_radius=6)
+
+        # 3. Apply Rotation
+        rotated_surf = pygame.transform.rotate(surf, self.angle)
+        new_rect = rotated_surf.get_rect(center=self.rect.center)
+        
+        screen.blit(rotated_surf, new_rect.topleft)
