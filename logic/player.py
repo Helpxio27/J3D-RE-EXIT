@@ -112,9 +112,15 @@ class Player:
             self.vel_y = self.wall_jump_y
             self.can_wall_jump = False
 
-    def update_animation(self):
-        """Dynamic Tilt Effect"""
-        target_angle = -self.vel_x * 2.5 
+    def update_animation(self, current_vel_x=None):
+        """
+        Dynamic Tilt Effect. 
+        Accepts current_vel_x to allow the menu to pass 0 for a straight preview.
+        """
+        if current_vel_x is None:
+            current_vel_x = self.vel_x
+            
+        target_angle = -current_vel_x * 2.5 
         self.angle += (target_angle - self.angle) * 0.15
 
     def update(self, obstacles, render_dt, emitter=None):
@@ -135,6 +141,7 @@ class Player:
             self.on_wall = False
             self.wall_dir = 0
 
+        # Normal gameplay animation uses internal velocity
         self.update_animation()
 
         # --- IMPROVED COLORED TRAIL ---
