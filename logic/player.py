@@ -1,4 +1,6 @@
 import pygame
+import math
+import random
 from particles import ParticleEmitter
 from collision import resolve_horizontal
 from collision import resolve_vertical
@@ -6,234 +8,181 @@ from settings import SCREEN_HEIGHT
 from settings import SCREEN_WIDTH
 
 class Player:
-    def __init__(self, x, y, controls, color, is_tagger=False): #INIT FUNCTION
-        self.rect = pygame.Rect(x, y, 30, 30) # Player size
+    def __init__(self, x, y, controls, color, is_tagger=False):
+        self.rect = pygame.Rect(x, y, 30, 30) 
 
         self.controls = controls
         self.color = color
         self.is_tagger = is_tagger
         
-        # Tag mechanics
-        self.tag_radius = 60
+        # Customization
+        self.custom_image = None
+        self.angle = 0 
 
-        self.tagback_cooldown = 0      # frames until this player can be tagged by the last runner
-        self.tagback_cooldown_time = 30  # e.g., 0.5s at 60 FPS
-
-        # Physics
+        # Physics 
         self.vel_x = 0 
         self.vel_y = 0
-
         self.accel_ground = 1.5
         self.accel_air = 0.4
-
-        self.friction = 0.92   # VERY IMPORTANT (close to 1)
-        self.max_speed = 10    # FAST AS HELL
-
-        self.gravity = 0.8 # Gravity affecting the player
-        self.jump_strength = -15 # Jumping velocity (negative for upward movement)
-
-        self.on_ground = False # To check if the player is on the ground
+        self.friction = 0.92
+        self.max_speed = 10 
+        self.gravity = 0.8 
+        self.jump_strength = -15 
+        self.on_ground = False 
         
-        # Tagging Logic
-        self.is_tagger = is_tagger
+        # Tag Mechanics
         self.tag_radius = 30
+        self.tagback_cooldown = 0
+        self.tagback_cooldown_time = 30
 
-        # Wall slide mechanics
+        # Wall Mechanics
         self.on_wall = False
-        self.wall_dir = 0   # -1 = left wall, 1 = right wall
+        self.wall_dir = 0 
         self.wall_slide_speed = 4
-
-        # Wall jump mechanics
-        self.wall_jump_x = 12     # horizontal push
-        self.wall_jump_y = -15   # vertical force
+        self.wall_jump_x = 12 
+        self.wall_jump_y = -15 
         self.can_wall_jump = True
         
-        # Particle Emitter for effects
+        # Internal Trail
         self.trail = ParticleEmitter()
 
-    # ================================== # 
-    # HELPER FUNCTION``
     def get_wish_dir(self, keys):
-        # Directional Input :
-        # wish_dir = -1   left
-        # wish_dir = 1    right
-        # wish_dir = 0    no input
-        dir = 0
-        if keys[self.controls["left"]]:
-            dir -= 1
-        if keys[self.controls["right"]]:
-            dir += 1
-        return dir
-    # ================================== # 
-    # HANDLING INPUT
-    def handle_input(self): 
-        keys = pygame.key.get_pressed()
+        direction = 0
+        if keys[self.controls["left"]]: direction -= 1
+        if keys[self.controls["right"]]: direction += 1
+        return direction
 
+    def handle_input(self, emitter): 
+        keys = pygame.key.get_pressed()
         wish_dir = self.get_wish_dir(keys)
         self.apply_horizontal_movement(wish_dir)
-        self.handle_jump(keys)
+        self.handle_jump(keys, emitter)
         self.handle_drop(keys)
 
-    def handle_jump(self, keys):
+    def handle_jump(self, keys, emitter):
         if keys[self.controls["jump"]] and self.on_ground:
             self.vel_y = self.jump_strength
             self.on_ground = False
+            
+            # --- IMPROVED SMOKE EFFECT ---
+            if emitter:
+                for _ in range(15):  # More particles for a dense effect
+                    speed_x = random.uniform(-4, 4) # Lateral explosion
+                    speed_y = random.uniform(-1, 1) # Slight vertical movement
+                    
+                    emitter.emit(
+                        pos=(self.rect.centerx, self.rect.bottom),
+                        vel=(speed_x, speed_y),
+                        amount=1, 
+                        spread=2, 
+                        color=(220, 220, 220), # Smoke color
+                        size=random.randint(3, 7), # Varied sizes
+                        lifetime=random.uniform(0.4, 0.8),
+                        alpha=random.randint(150, 200),
+                        fade_curve='ease-out'
+                    )
 
     def handle_drop(self, keys):
         if keys[self.controls["drop"]] and not self.on_ground:
             self.vel_y += self.gravity * 6
-    # ================================== #
-    # APPLICATION OF MOVEMENT
+
     def apply_horizontal_movement(self, wish_dir):
-        # Choose acceleration
         accel = self.accel_ground if self.on_ground else self.accel_air
-
-        # Apply movement
         self.vel_x += wish_dir * accel
-
-        # Apply friction only on ground and no input
+        
         if self.on_ground and wish_dir == 0:
             self.vel_x *= self.friction
-
-        # Sharp turn handling
+            
+        # Sharp turn penalty
         if wish_dir != 0 and ((wish_dir > 0 and self.vel_x < 0) or (wish_dir < 0 and self.vel_x > 0)):
-            # Sharp turn penalty
-            self.vel_x *= 0.7
-            accel *= 1.5
-        
-        # Clamp velocity
+            self.vel_x *= 0.7 
+            
         self.vel_x = max(-self.max_speed, min(self.vel_x, self.max_speed))  
     
     def apply_gravity(self):
+        # Wall slide logic
         if self.on_wall and not self.on_ground and self.vel_y > self.wall_slide_speed:
-            # Celeste-style wall slide (clamp fall speed)
             self.vel_y = self.wall_slide_speed
         else:
             self.vel_y += self.gravity
 
     def try_wall_jump(self, keys):
-        if (
-            keys[self.controls["jump"]]
-            and self.on_wall
-            and not self.on_ground
-            and self.can_wall_jump
-        ):
+        if keys[self.controls["jump"]] and self.on_wall and not self.on_ground and self.can_wall_jump:
             self.vel_x = -self.wall_dir * self.wall_jump_x
             self.vel_y = self.wall_jump_y
             self.can_wall_jump = False
-    
-    # def apply_gravity(self):
-    #     self.vel_y += self.gravity
 
-    #     max_fall_speed = 20
-    #     self.vel_y = min(self.vel_y, max_fall_speed)
-    # # ================================== #
-    # UPDATE AND DRAW (low level)
-    def update(self, obstacles, render_dt):
+    def update_animation(self):
+        """Dynamic Tilt Effect"""
+        target_angle = -self.vel_x * 2.5 
+        self.angle += (target_angle - self.angle) * 0.15
+
+    def update(self, obstacles, render_dt, emitter=None):
         keys = pygame.key.get_pressed()
-        self.handle_input()
+        self.handle_input(emitter)
         self.apply_gravity()
-
-        # Try wall jump
         self.try_wall_jump(keys)
 
-        # Horizontal movement
+        # Movement and Collisions
         self.rect.x += self.vel_x
-        self.vel_x, self.on_wall, self.wall_dir = resolve_horizontal(
-            self.rect, obstacles, self.vel_x
-        )
+        self.vel_x, self.on_wall, self.wall_dir = resolve_horizontal(self.rect, obstacles, self.vel_x)
 
-        # Vertical movement
         self.rect.y += self.vel_y
-        self.vel_y, self.on_ground = resolve_vertical(
-            self.rect, obstacles, self.vel_y
-        )
+        self.vel_y, self.on_ground = resolve_vertical(self.rect, obstacles, self.vel_y)
         
-        # RESET WALL JUMP WHEN LANDED
         if self.on_ground:
             self.can_wall_jump = True
-
-        # If we're on the ground, we're not on a wall
-        if self.on_ground:
             self.on_wall = False
             self.wall_dir = 0
 
-        # Trail emitter update
-        # NEED REWORK for better particle effect
+        self.update_animation()
+
+        # --- IMPROVED COLORED TRAIL ---
         speed = abs(self.vel_x) + abs(self.vel_y)
-        if speed > 5:
+        if speed > 6:
             self.trail.emit(
                 pos=(self.rect.centerx, self.rect.centery),
-                vel=(0, 0),
-                amount=3,
-                spread=1.5,
-                color=(255, 255, 255),
-                size=4,
-                lifetime=0.1,
-                alpha=150,
-                fade_curve='ease-out'
+                vel=(random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5)), 
+                amount=1, 
+                spread=1, 
+                color=self.color, 
+                size=random.randint(2, 4), 
+                lifetime=0.25, 
+                alpha=130, 
+                fade_curve='ease-in'
             )
         self.trail.update(render_dt)
         
-        # Tag Cooldown decreaser
         if self.tagback_cooldown > 0:
             self.tagback_cooldown -= 1
 
-        # Respawn if go in da void :D
-        if self.rect.x >= SCREEN_HEIGHT + 300 or self.rect.y >= SCREEN_HEIGHT + 300:
-            self.rect.x = 300
-            self.rect.y = 300
-
-        # Test Tag Cooldown
-        #print("Tag Cooldown", self.tagback_cooldown)
+        # Respawn if falling out of bounds
+        if self.rect.y >= SCREEN_HEIGHT + 500:
+            self.rect.x, self.rect.y = 300, 100
+            self.vel_x, self.vel_y = 0, 0
 
     def draw(self, screen):
-        # If tagger
+        # 1. Tagger Halo (Smooth pulse)
         if self.is_tagger:
-            pygame.draw.circle(
-                screen,
-                (255, 255, 0),
-                self.rect.center,
-                self.tag_radius,
-                5  # outline only
-            )
+            # Animated outer circle
+            pulse = abs(math.sin(pygame.time.get_ticks() * 0.01)) * 5
+            pygame.draw.circle(screen, (255, 255, 0), self.rect.center, self.tag_radius + pulse, 2)
 
-        # Trail emitter draw
-        #self.trail.draw(screen, blend_mode=pygame.BLEND_ADD)  # glowy effect
+        # 2. Behind particles
         self.trail.draw(screen)
 
-        # Basic Drawing of player
-        pygame.draw.rect(screen, self.color, self.rect)
-
-# Old Input Handling 
-
-# def handle_input(self):
-    #     keys = pygame.key.get_pressed()
-
-
-    #     # Directional Input :
-    #     # wish_dir = -1   left
-    #     # wish_dir = 1    right
-    #     # wish_dir = 0    no input
+        # 3. Draw Player with Rotation (Tilt)
+        player_surf = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
         
-    #     wish_dir = 0
-    #     if keys[pygame.K_a]:
-    #         wish_dir -= 1
-    #     if keys[pygame.K_d]:
-    #         wish_dir += 1
-        
-    #     accel = self.accel_ground if self.on_ground else self.accel_air
-       
-    #     self.vel_x = max(-self.max_speed, min(self.vel_x, self.max_speed))
-        
-    #     self.vel_x += wish_dir * accel
+        if self.custom_image:
+            img_scaled = pygame.transform.scale(self.custom_image, (self.rect.width, self.rect.height))
+            player_surf.blit(img_scaled, (0, 0))
+        else:
+            # Modern Cube look with light border
+            pygame.draw.rect(player_surf, self.color, (0, 0, self.rect.width, self.rect.height), border_radius=5)
+            pygame.draw.rect(player_surf, (255, 255, 255, 50), (0, 0, self.rect.width, self.rect.height), 2, border_radius=5)
 
-    #     # Apply friction ONLY on ground and only if no input
-    #     if self.on_ground and wish_dir == 0:
-    #         self.vel_x *= self.friction
+        rotated_surf = pygame.transform.rotate(player_surf, self.angle)
+        new_rect = rotated_surf.get_rect(center=self.rect.center)
         
-    #     self.vel_x = max(-self.max_speed, min(self.vel_x, self.max_speed))
-
-    #     if keys[pygame.K_SPACE] and self.on_ground:
-    #         self.vel_y = self.jump_strength
-    #         self.on_ground = False
+        screen.blit(rotated_surf, new_rect.topleft)
