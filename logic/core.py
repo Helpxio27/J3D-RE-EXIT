@@ -52,18 +52,21 @@ class Game:
 
         self.particles = ParticleEmitter()
 
-        # Players initialization
+        # Players initialization with default spawn points
+        self.spawn_points = [(500, 500), (300, 100)]
         self.players = [
-            Player(500, 500, controls={"left": pygame.K_a, "right": pygame.K_d, "jump": pygame.K_w, "drop": pygame.K_s},
+            Player(self.spawn_points[0][0], self.spawn_points[0][1], 
+                   controls={"left": pygame.K_a, "right": pygame.K_d, "jump": pygame.K_w, "drop": pygame.K_s},
                    color=(255, 50, 50), is_tagger=True),
-            Player(300, 100, controls={"left": pygame.K_LEFT, "right": pygame.K_RIGHT, "jump": pygame.K_UP, "drop": pygame.K_DOWN},
+            Player(self.spawn_points[1][0], self.spawn_points[1][1], 
+                   controls={"left": pygame.K_LEFT, "right": pygame.K_RIGHT, "jump": pygame.K_UP, "drop": pygame.K_DOWN},
                    color=(50, 50, 255), is_tagger=False)
         ]
 
         self.clock = pygame.time.Clock()
         self.running = True
         
-        # Load default map (will be overwritten when starting the game)
+        # Load default map
         self.level = Level(self.available_maps[0]["path"], "assets/maps/tileset_lv1.png")
 
     def open_image_picker(self):
@@ -74,6 +77,13 @@ class Game:
         if file_path:
             return pygame.image.load(file_path).convert_alpha()
         return None
+
+    def reset_players_position(self):
+        """Reset players to their starting positions before the match begins"""
+        for i, p in enumerate(self.players):
+            p.rect.center = self.spawn_points[i]
+            p.vel_x = 0
+            p.vel_y = 0
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -91,16 +101,16 @@ class Game:
                             elif self.menu_selection == 1: self.menu_state = "CUSTOM_SELECT"
                             elif self.menu_selection == 2: self.running = False
 
-                    # --- PLAYER SELECTION FOR CUSTOMIZATION ---
+                    # --- PLAYER SELECTION ---
                     elif self.menu_state == "CUSTOM_SELECT":
                         if event.key == pygame.K_UP or event.key == pygame.K_DOWN:
-                            self.player_to_edit = 1 if self.player_to_edit == 0 else 0
+                            self.player_to_edit = (self.player_to_edit + 1) % 2
                         if event.key == pygame.K_RETURN:
                             self.menu_state = "CUSTOM_EDIT"
                         if event.key == pygame.K_ESCAPE:
                             self.menu_state = "MAIN"
 
-                    # --- PLAYER EDITION (IMAGE/COLOR) ---
+                    # --- PLAYER EDITION ---
                     elif self.menu_state == "CUSTOM_EDIT":
                         p = self.players[self.player_to_edit]
                         if event.key == pygame.K_i:
@@ -117,9 +127,9 @@ class Game:
                         if event.key == pygame.K_UP: self.selected_map_idx = (self.selected_map_idx - 1) % len(self.available_maps)
                         if event.key == pygame.K_DOWN: self.selected_map_idx = (self.selected_map_idx + 1) % len(self.available_maps)
                         if event.key == pygame.K_RETURN:
-                            # Load selected map and start game
                             m_data = self.available_maps[self.selected_map_idx]
                             self.level = Level(m_data["path"], "assets/maps/tileset_lv1.png")
+                            self.reset_players_position() # IMPORTANT: Reset positions before play
                             self.in_menu = False 
                         if event.key == pygame.K_ESCAPE:
                             self.menu_state = "MAIN"
@@ -128,7 +138,8 @@ class Game:
                     if event.key == pygame.K_ESCAPE:
                         self.paused = not self.paused
                     if self.paused and event.key == pygame.K_q:
-                        self.__init__() # Reset game state
+                        # Full reset
+                        self.__init__()
 
     def update(self):
         for p in self.players:
@@ -136,7 +147,6 @@ class Game:
         
         self.particles.update(FIXED_DT)
 
-        # Tag Logic
         tagger = next((p for p in self.players if p.is_tagger), None)
         runner = next((p for p in self.players if not p.is_tagger), None)
         if tagger and runner and runner.tagback_cooldown == 0:
@@ -162,23 +172,29 @@ class Game:
             for i in range(2):
                 color = (255, 255, 0) if i == self.player_to_edit else (255, 255, 255)
                 txt = font_ui.render(f"PLAYER {i+1}", True, color)
-                self.screen.blit(txt, (200, 300 + i * 150))
-                # Player preview
-                self.players[i].rect.center = (100, 320 + i * 150)
+                self.screen.blit(txt, (250, 300 + i * 150))
+                
+                # Draw preview without permanently changing rect
+                preview_rect = pygame.Rect(0, 0, 30, 30)
+                preview_rect.center = (150, 320 + i * 150)
+                # Temporarily set center for drawing
+                old_center = self.players[i].rect.center
+                self.players[i].rect.center = preview_rect.center
                 self.players[i].draw(self.screen)
+                self.players[i].rect.center = old_center # Restore immediately
 
         elif self.menu_state == "CUSTOM_EDIT":
-            title = font_title.render(f"PLAYER {self.player_to_edit + 1}", True, (255, 255, 255))
+            title = font_title.render(f"EDITING PLAYER {self.player_to_edit + 1}", True, (255, 255, 255))
             info = font_ui.render("[I] Image | [C] Color | [ESC] Back", True, (150, 150, 150))
             self.screen.blit(title, (100, 50))
             self.screen.blit(info, (100, 120))
-            # Central preview
+            
             p = self.players[self.player_to_edit]
-            p.rect.center = (SCREEN_WIDTH//2, SCREEN_HEIGHT//2)
-            # update_animation might need vel_x, passing 0 for static preview
-            if hasattr(p, 'update_animation'):
-                p.update_animation(0) 
+            old_center = p.rect.center
+            p.rect.center = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
+            if hasattr(p, 'update_animation'): p.update_animation(0)
             p.draw(self.screen)
+            p.rect.center = old_center # Restore immediately
 
         elif self.menu_state == "MAP_SELECT":
             title = font_title.render("SELECT MAP", True, (255, 255, 255))
@@ -197,7 +213,6 @@ class Game:
         for p in self.players:
             p.draw(self.screen)
         if self.paused:
-            # Pause overlay
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 150))
             self.screen.blit(overlay, (0,0))
@@ -214,22 +229,25 @@ class Game:
             now = pygame.time.get_ticks() / 1000.0
             frame_time = min(now - last_time, 0.25)
             last_time = now
-            accumulator += frame_time
-
+            
             self.handle_events()
 
             if self.in_menu:
                 self.draw_menu()
             else:
                 if not self.paused:
-                    # Physics update with fixed time step
+                    accumulator += frame_time
                     while accumulator >= FIXED_DT:
                         self.update()
                         accumulator -= FIXED_DT
                     self.draw()
                 else:
-                    self.draw() # Still draw the game while paused
+                    self.draw()
 
             self.clock.tick(RENDER_FPS)
         pygame.quit()
         sys.exit()
+
+if __name__ == "__main__":
+    game = Game()
+    game.run()
