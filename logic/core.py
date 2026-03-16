@@ -27,10 +27,12 @@ def resource_path(relative_path):
         # PyInstaller stores files in _MEIPASS
         base_path = sys._MEIPASS
     except AttributeError:
-        base_path = os.path.abspath("..")  # adjust if main.py is in logic/
+        # Project root is parent of logic/
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
     return os.path.join(base_path, relative_path)
 
+    
 class Game:
     def __init__(self):
         pygame.init()
@@ -46,9 +48,15 @@ class Game:
 
         # MAP LIST
         self.available_maps = [
-            {"name": "ARENA CLASSIC", "path": "assets/maps/lv1.tmj", "tileset": "assets/maps/tileset_lv1.png"},
-            {"name": "THE CAVE", "path": "assets/maps/lv2.tmj", "tileset": "assets/maps/tileset_lv2.png"},
-            {"name": "TARIO", "path": "assets/maps/lv3.tmj", "tileset": "assets/maps/tileset_lv3.png"}
+            {"name": "ARENA CLASSIC", 
+            "path": resource_path("assets/maps/lv1.tmj"), 
+            "tileset": resource_path("assets/maps/tileset_lv1.png")},
+            {"name": "THE CAVE", 
+            "path": resource_path("assets/maps/lv2.tmj"), 
+            "tileset": resource_path("assets/maps/tileset_lv2.png")},
+            {"name": "TARIO", 
+            "path": resource_path("assets/maps/lv3.tmj"), 
+            "tileset": resource_path("assets/maps/tileset_lv3.png")}
         ]
 
         self.selected_map_idx = 0
@@ -62,9 +70,10 @@ class Game:
 
         pygame.display.set_caption("RE-EXIT - AAGHUAGHAUWHGAUHWGAUHWGUAWHGUAHGUAHGUAHGUAWHG")
 
+        # Background
         try:
             self.background = pygame.transform.scale(
-                pygame.image.load("assets/2 Background/Background.png").convert(),
+                pygame.image.load(resource_path("assets/2 Background/Background.png")).convert(),
                 (SCREEN_WIDTH, SCREEN_HEIGHT)
             )
         except:

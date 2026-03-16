@@ -1,14 +1,31 @@
 import pygame
 import json
+import sys
+import os
 
 # This is probably the hardest code I've ever fucking done man
 # Shoot me already
 # Do not ask me to redo it, I will not be able
 
+# Making sure the it's the right path depending on the OS (for assets loading)
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and PyInstaller """
+    try:
+        # PyInstaller stores files in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        # Project root is parent of logic/
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+    return os.path.join(base_path, relative_path)
+
 class Level:
     def __init__(self, map_path, tileset_path):
-        # Load map JSON
-        with open(map_path) as f: # Makes a dictionary
+        map_path = resource_path(map_path)
+        tileset_path = resource_path(tileset_path)
+
+        # LOAD MAP JSO
+        with open(map_path) as f:
             self.map_data = json.load(f)
 
         self.map_width = self.map_data["width"]
@@ -19,7 +36,6 @@ class Level:
         self.tiles = self.load_tileset(tileset_path, self.tile_size, self.tile_size)
 
         # --- Build collision walls ---
-        # first layer is the collision layer
         collision_layer = self.map_data['layers'][0]
         tile_ids = collision_layer['data']
 
