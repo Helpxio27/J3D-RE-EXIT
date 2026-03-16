@@ -46,21 +46,49 @@ class Level:
                 tile_id += 1
 
         return tiles
-
-    def draw(self, screen):
-        # Draw first layer (collision/ground) -- can add more layers later
+    
+    def draw(self, screen, scale_x=1, scale_y=1):
         layer = self.map_data['layers'][0]
         tile_ids = layer['data']
 
         for index, tile_id in enumerate(tile_ids):
             if tile_id == 0:
                 continue
-            x = (index % self.map_width) * self.tile_size
-            y = (index // self.map_width) * self.tile_size
+
+            x = (index % self.map_width) * self.tile_size * scale_x
+            y = (index // self.map_width) * self.tile_size * scale_y
+
             image = self.tiles.get(tile_id)
             if image:
-                screen.blit(image, (x, y))
+                scaled_image = pygame.transform.scale(
+                    image,
+                    (int(self.tile_size * scale_x), int(self.tile_size * scale_y))
+                )
+                screen.blit(scaled_image, (x, y))
 
+# All decoration system
+class MapRenderer:
+    def __init__(self, level):
+        self.level = level
+
+    def draw(self, screen):
+        # start at layer 1 because layer 0 is collisions
+        for layer_index in range(1, len(self.level.map_data["layers"])):
+
+            layer = self.level.map_data["layers"][layer_index]
+            tile_ids = layer["data"]
+
+            for index, tile_id in enumerate(tile_ids):
+                if tile_id == 0:
+                    continue
+
+                x = (index % self.level.map_width) * self.level.tile_size 
+                y = (index // self.level.map_width) * self.level.tile_size 
+
+                image = self.level.tiles.get(tile_id)
+
+                if image:
+                    screen.blit(image, (x, y))
 
 # OLD IMPLEMENTATION:
 # for debugging collisions

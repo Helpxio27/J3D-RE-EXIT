@@ -49,7 +49,6 @@ class Particle:
         temp_surf.fill((255, 255, 255, self.current_alpha), special_flags=pygame.BLEND_RGBA_MULT)
         surface.blit(temp_surf, (self.pos.x - self.size, self.pos.y - self.size), special_flags=blend_mode)
 
-
 class ParticleEmitter:
     """Manages a pool of particles"""
     def __init__(self):

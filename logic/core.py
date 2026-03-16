@@ -1,5 +1,9 @@
 import pygame
 import sys
+import os
+import random
+import tkinter as tk
+from tkinter import filedialog
 # ALL settings
 from settings import (
     SCREEN_WIDTH,
@@ -10,14 +14,13 @@ from settings import (
 )
 from player import Player
 from level import Level
-import os
+from level import MapRenderer
 # TAG IMPLEMENTATION
-from collision import circle_rect_collision
+from collision import circle_rect_collision # for tag
+from particles import ParticleEmitter # for effects
+from menu import Menu # Menu system
 
-# TILESET IMPLEMENTATION
-import json
-
-# Making sure the 
+# Making sure the it's the right path depending on the OS (for assets loading)
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and PyInstaller """
     try:
@@ -32,49 +35,141 @@ class Game:
     def __init__(self):
         pygame.init()
 
-        # MENU TESTING FUNCTIONALITY
+        # GAME STATES and MENU STATES
         self.paused = False
         self.in_menu = True
-    
-        # Screen Making, and showing
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT)) # Create the game window
-        pygame.display.set_caption("My First Platformer") # Set the window title
+        self.menu_state = "MAIN" # Possible states: MAIN, CUSTOM_SELECT, CUSTOM_EDIT, MAP_SELECT
+        self.menu_selection = 0   
+        self.player_to_edit = 0  # 0 for P1, 1 for P2
+
+        self.menu = Menu(self)
+
+        # MAP LIST
+        self.available_maps = [
+            {"name": "ARENA CLASSIC", "path": "assets/maps/lv1.tmj", "tileset": "assets/maps/tileset_lv1.png"},
+            {"name": "THE CAVE", "path": "assets/maps/lv2.tmj", "tileset": "assets/maps/tileset_lv2.png"},
+            {"name": "TARIO", "path": "assets/maps/lv3.tmj", "tileset": "assets/maps/tileset_lv3.png"}
+        ]
+
+        self.selected_map_idx = 0
+
+        # ASSET LOADING (background, tilesets, etc.)  
+        self.WIDTH, self.HEIGHT = SCREEN_WIDTH, SCREEN_HEIGHT
+        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
+        # Virtual screen at fixed resolution
+        self.virtual_screen = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+
+
+        pygame.display.set_caption("RE-EXIT - AAGHUAGHAUWHGAUHWGAUHWGUAWHGUAHGUAHGUAHGUAWHG")
         
-        self.background = pygame.transform.scale(
-            pygame.image.load("assets/2 Background/Background.png"),
-            (SCREEN_WIDTH, SCREEN_HEIGHT)
-        )
+        try:
+            self.background = pygame.transform.scale(
+                pygame.image.load("assets/2 Background/Background.png"),
+                (SCREEN_WIDTH, SCREEN_HEIGHT)
+            )
+        except:
+            self.background = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            self.background.fill((30, 30, 30))
+
+        self.particles = ParticleEmitter()
 
         # FPS SHOWER
         self.fps_timer = 0.0
         self.fps_frames = 0
-
+        # FPS THINGY
+        self.spawn_points = [(500, 700), (500, 700)]
         self.players = [
-            Player(
-                500, 500,
-                controls={"left": pygame.K_a, 
-                        "right": pygame.K_d, 
-                        "jump": pygame.K_w,
-                        "drop": pygame.K_s},
-                color=(255, 50, 50),
-                is_tagger=True
-            ),
-            Player(
-                300, 100,
-                controls={"left": pygame.K_LEFT, 
-                        "right": pygame.K_RIGHT, 
-                        "jump": pygame.K_UP, 
-                        "drop": pygame.K_DOWN},
-                color=(50, 50, 255),
-                is_tagger=False
-            )
+            Player(self.spawn_points[0][0], self.spawn_points[0][1], 
+                   controls={"left": pygame.K_a, "right": pygame.K_d, "jump": pygame.K_w, "drop": pygame.K_s},
+                   color=(255, 50, 50), is_tagger=True),
+            Player(self.spawn_points[1][0], self.spawn_points[1][1], 
+                   controls={"left": pygame.K_LEFT, "right": pygame.K_RIGHT, "jump": pygame.K_UP, "drop": pygame.K_DOWN},
+                   color=(50, 50, 255), is_tagger=False)
         ]
-
 
         self.clock = pygame.time.Clock()
         self.running = True
 
-        self.level = Level("assets/maps/lv1.tmj", "assets/maps/tileset_lv1.png")
+        # TILESET IMPLEMENTATION
+        #self.level = Level("assets/maps/lv3.tmj", "assets/maps/tileset_lv3.png")
+        #self.renderer = MapRenderer(self.level)
+
+    def open_image_picker(self):
+        root = tk.Tk()
+        root.withdraw()
+        file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.png *.jpg")])
+        root.destroy()
+        if file_path:
+            return pygame.image.load(file_path).convert_alpha()
+        return None
+
+    def reset_players_position(self):
+        """Reset players to their starting positions before the match begins"""
+        for i, p in enumerate(self.players):
+            p.rect.center = self.spawn_points[i]
+            p.vel_x = 0
+            p.vel_y = 0
+
+    def handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+            if event.type == pygame.VIDEORESIZE:
+                self.handle_resize(event.w, event.h)
+            if self.in_menu:
+                self.menu.handle_events(event)
+            else:
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.paused = not self.paused
+                    if self.paused and event.key == pygame.K_q:
+                        self.reset_to_menu()
+
+    def update(self, inputs_per_player):
+        # 1. Update all players
+        print("Server is seeing:", inputs_per_player)
+        for i, p in enumerate(self.players):
+            p.update(self.level.walls, self.render_dt, inputs_per_player[i])
+             # Respawn if go in da void :D
+            if p.rect.x >= SCREEN_HEIGHT + 300 or p.rect.y >= SCREEN_HEIGHT + 300:
+                # Swap roles
+                tagger.is_tagger = False
+                runner.is_tagger = True
+                # Apply tagback cooldown to the old tagger
+                tagger.tagback_cooldown = tagger.tagback_cooldown_time
+                runner.vel_x = 0
+                runner.vel_y = 0
+                runner.stun_timer = 10
+                
+                p.rect.x = 300
+                p.rect.y = 300
+                
+
+        # 2. Tag logic (to put somewhere else in the future)
+        tagger = None
+        runner = None
+
+        for p in self.players:
+            if p.is_tagger:
+                tagger = p
+            else:
+                runner = p
+                
+        if tagger and runner:
+            # Only tag if runner is not immune from tagback
+            if runner.tagback_cooldown == 0 and circle_rect_collision(
+                tagger.rect.center,
+                tagger.tag_radius,
+                runner.rect
+            ):
+                # Swap roles
+                tagger.is_tagger = False
+                runner.is_tagger = True
+                # Apply tagback cooldown to the old tagger
+                tagger.tagback_cooldown = tagger.tagback_cooldown_time
+                runner.vel_x = 0
+                runner.vel_y = 0
+                runner.stun_timer = 10
 
     def run(self):
         accumulator = 0.0
@@ -103,9 +198,25 @@ class Game:
 
             # Debug print
             print("Current inputs:", inputs_per_player)
+            if self.in_menu: # if we're in the menu, we want to draw it and skip the rest of the loop
+                self.menu.draw(self.virtual_screen)
 
-            if self.in_menu:
-                self.draw_menu()
+                # SCALE TO WINDOW (same as draw())
+                scale_x = self.WIDTH / SCREEN_WIDTH
+                scale_y = self.HEIGHT / SCREEN_HEIGHT
+                scale = min(scale_x, scale_y)
+
+                offset_x = (self.WIDTH - SCREEN_WIDTH * scale) / 2
+                offset_y = (self.HEIGHT - SCREEN_HEIGHT * scale) / 2
+
+                scaled_surface = pygame.transform.scale(
+                    self.virtual_screen,
+                    (int(SCREEN_WIDTH * scale), int(SCREEN_HEIGHT * scale))
+                )
+
+                self.screen.fill((0,0,0))
+                self.screen.blit(scaled_surface, (offset_x, offset_y))
+                pygame.display.flip()
             else:
                 if not self.paused:
                     while accumulator >= FIXED_DT:
@@ -127,44 +238,6 @@ class Game:
             self.clock.tick(RENDER_FPS) 
 
         self.quit()
-    
-    def update(self, inputs_per_player):
-        # 1. Update all players
-        print("Server is seeing:", inputs_per_player)
-        for i, p in enumerate(self.players):
-            p.update(self.level.walls, self.render_dt, inputs_per_player[i])
-        
-        # 2. Tag logic (to put somewhere else in the future)
-        tagger = None
-        runner = None
-
-        for p in self.players:
-            if p.is_tagger:
-                tagger = p
-            else:
-                runner = p
-
-                
-        if tagger and runner:
-            # Only tag if runner is not immune from tagback
-            if runner.tagback_cooldown == 0 and circle_rect_collision(
-                tagger.rect.center,
-                tagger.tag_radius,
-                runner.rect
-            ):
-                # Swap roles
-                tagger.is_tagger = False
-                runner.is_tagger = True
-
-                # Apply tagback cooldown to the old tagger
-                tagger.tagback_cooldown = tagger.tagback_cooldown_time
-    
-    def draw_menu(self):
-        self.screen.fill((20, 20, 20))
-        font = pygame.font.SysFont(None, 48)
-        text = font.render("ENTER = Play | ESC = Quit", True, (255, 255, 255))
-        self.screen.blit(text, (100, 100))
-        pygame.display.flip()
 
     def draw_pause_overlay(self):
         font = pygame.font.SysFont(None, 48)
@@ -172,24 +245,10 @@ class Game:
         self.screen.blit(text, (100, 100))
         pygame.display.flip()
 
-    def handle_events(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False
-
-            # MENU controls (when in menu)
-            elif self.in_menu and event.type == pygame.KEYDOWN: 
-                if event.key == pygame.K_RETURN:
-                    self.in_menu = False
-                elif event.key == pygame.K_ESCAPE:
-                    self.running = False
-
-            # GAME controls (when not in menu, you can pause with esc, and go back to menu with q)
-            elif not self.in_menu and event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    self.paused = not self.paused
-                if self.paused and event.key == pygame.K_q:
-                    self.reset_to_menu()
+    def handle_resize(self, new_width, new_height):
+        self.WIDTH, self.HEIGHT = new_width, new_height
+        self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT), pygame.RESIZABLE)
+    
     def reset_to_menu(self):
         self.in_menu = True
         self.paused = False
@@ -197,17 +256,34 @@ class Game:
         # Recreate game state cleanly
         self.__init__()
 
-        # TEMPORARY CODE
-
     def draw(self):
-        # self.screen.fill(BACKGROUND_COLOR)
-        # Instead of screen.fill(...)
-        self.screen.blit(self.background, (0, 0))
-        for p in self.players:
-            p.draw(self.screen)
-        
-        self.level.draw(self.screen)
+        # 1. Draw everything to the virtual screen
+        self.virtual_screen.blit(self.background, (0, 0))
 
+        self.renderer.draw(self.virtual_screen)
+        self.level.draw(self.virtual_screen)
+        for p in self.players:
+            p.draw(self.virtual_screen)  # player.py will handle scaling later if needed
+
+
+        # 2. Compute scaling to fit the window while preserving aspect ratio
+        scale_x = self.WIDTH / SCREEN_WIDTH
+        scale_y = self.HEIGHT / SCREEN_HEIGHT
+        scale = min(scale_x, scale_y)  # keep aspect ratio
+
+        # Compute letterbox offsets
+        offset_x = (self.WIDTH - SCREEN_WIDTH * scale) / 2
+        offset_y = (self.HEIGHT - SCREEN_HEIGHT * scale) / 2
+
+        # 3. Scale virtual screen to window
+        scaled_surface = pygame.transform.scale(
+            self.virtual_screen, 
+            (int(SCREEN_WIDTH * scale), int(SCREEN_HEIGHT * scale))
+        )
+
+        # 4. Blit to real screen with letterbox offset
+        self.screen.fill((0, 0, 0))  # black letterbox bars
+        self.screen.blit(scaled_surface, (offset_x, offset_y))
         pygame.display.flip()
 
     def quit(self):

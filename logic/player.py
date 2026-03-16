@@ -5,6 +5,7 @@ from collision import resolve_vertical
 from settings import SCREEN_HEIGHT 
 from settings import SCREEN_WIDTH
 
+
 class Player:
     def __init__(self, x, y, controls, color, is_tagger=False): #INIT FUNCTION
         self.rect = pygame.Rect(x, y, 30, 30) # Player size
@@ -37,6 +38,7 @@ class Player:
         # Tagging Logic
         self.is_tagger = is_tagger
         self.tag_radius = 30
+        self.stun_timer = 0
 
         # Wall slide mechanics
         self.on_wall = False
@@ -172,7 +174,13 @@ class Player:
         # Tag Cooldown decreaser
         if self.tagback_cooldown > 0:
             self.tagback_cooldown -= 1
-
+        
+        if self.stun_timer > 0:
+            self.stun_timer -= 1
+            self.vel_x = 0
+            self.vel_y = 0
+            return
+        
         # Respawn if go in da void :D
         if self.rect.x >= SCREEN_HEIGHT + 300 or self.rect.y >= SCREEN_HEIGHT + 300:
             self.rect.x = 300
