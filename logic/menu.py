@@ -3,6 +3,9 @@ import random
 from settings import SCREEN_WIDTH, SCREEN_HEIGHT
 from level import Level
 from level import MapRenderer
+import tkinter as tk
+from tkinter import filedialog
+
 
 class Menu:
     def __init__(self, game):
@@ -36,28 +39,25 @@ class Menu:
         
         # PLAYER SELECT
         elif self.state == "CUSTOM_SELECT":
-
             if event.key in (pygame.K_UP, pygame.K_DOWN):
                 self.player_to_edit = (self.player_to_edit + 1) % 2
-
             if event.key == pygame.K_RETURN:
                 self.state = "CUSTOM_EDIT"
-
             if event.key == pygame.K_ESCAPE:
                 self.state = "MAIN"
 
         # PLAYER EDIT
         elif self.state == "CUSTOM_EDIT":
-
             p = self.game.players[self.player_to_edit]
-
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_i:
+                    self.load_custom_skin()
             if event.key == pygame.K_c:
                 p.color = (
                     random.randint(50,255),
                     random.randint(50,255),
                     random.randint(50,255)
                 )
-
             if event.key == pygame.K_ESCAPE:
                 self.state = "CUSTOM_SELECT"
 
@@ -76,6 +76,38 @@ class Menu:
                 self.game.in_menu = False
             if event.key == pygame.K_ESCAPE:
                 self.state = "MAIN"
+
+    def load_custom_skin(self):
+        root = tk.Tk()
+        root.withdraw()  # hide tkinter window
+
+        file_path = filedialog.askopenfilename(
+            title="Select a player skin",
+            filetypes=[("Image files", "*.png *.jpg *.jpeg")]
+        )
+
+        if file_path:
+            try:
+                image = pygame.image.load(file_path).convert_alpha()
+                self.game.players[0].custom_image = image
+            except:
+                print("Failed to load image.")
+
+    def load_custom_skin(self):
+        root = tk.Tk()
+        root.withdraw()  # hide tkinter window
+
+        file_path = filedialog.askopenfilename(
+            title="Select a player skin",
+            filetypes=[("Image files", "*.png *.jpg *.jpeg")]
+        )
+
+        if file_path:
+            try:
+                image = pygame.image.load(file_path).convert_alpha()
+                self.game.players[0].custom_image = image
+            except:
+                print("Failed to load image.")
 
     def draw(self, screen):
         screen.fill((20,20,20))
@@ -127,7 +159,7 @@ class Menu:
         )
         screen.blit(title, (100,50))
         info = self.font_ui.render(
-            "[C] Random Color | ESC Back",
+            "[I] Image | [C] Random Color | ESC Back",
             True,
             (150,150,150)
         )

@@ -61,16 +61,16 @@ class Game:
 
 
         pygame.display.set_caption("RE-EXIT - AAGHUAGHAUWHGAUHWGAUHWGUAWHGUAHGUAHGUAHGUAWHG")
-        
+
         try:
             self.background = pygame.transform.scale(
-                pygame.image.load("assets/2 Background/Background.png"),
+                pygame.image.load("assets/2 Background/Background.png").convert(),
                 (SCREEN_WIDTH, SCREEN_HEIGHT)
             )
         except:
             self.background = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
             self.background.fill((30, 30, 30))
-
+        
         self.particles = ParticleEmitter()
 
         # FPS SHOWER

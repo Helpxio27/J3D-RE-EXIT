@@ -39,6 +39,10 @@ class Player:
         self.is_tagger = is_tagger
         self.tag_radius = 30
         self.stun_timer = 0
+        
+        # Animations
+        self.angle = 0
+        self.target_angle = 15
 
         # Wall slide mechanics
         self.on_wall = False
@@ -111,6 +115,12 @@ class Player:
         else:
             self.vel_y += self.gravity
 
+    def update_animation(self):
+        # tilt based on horizontal velocity
+        target_angle = max(-20, min(20, -self.vel_x * 2.5)) # keeps between -20 and 20
+        # smooth interpolation
+        self.angle += (target_angle - self.angle) * 0.15
+
     def try_wall_jump(self, inputs):
         if (
             inputs["jump"]
@@ -132,7 +142,8 @@ class Player:
         self.handle_input(inputs)
         self.apply_gravity()
         self.try_wall_jump(inputs)
-
+        self.update_animation()
+        
         # Horizontal movement
         self.rect.x += self.vel_x
         self.vel_x, self.on_wall, self.wall_dir = resolve_horizontal(
@@ -205,7 +216,32 @@ class Player:
         self.trail.draw(screen)
 
         # Basic Drawing of player
-        pygame.draw.rect(screen, self.color, self.rect)
+        outline = 2
+        player_surf = pygame.Surface(
+            (self.rect.width + outline*2, self.rect.height + outline*2),
+            pygame.SRCALPHA
+        )
+
+        # White outline
+        pygame.draw.rect(
+            player_surf,
+            (255, 255, 255),
+            (0, 0, self.rect.width + outline*2, self.rect.height + outline*2),
+            border_radius=6
+        )
+
+        # Player body
+        pygame.draw.rect(
+            player_surf,
+            self.color,
+            (outline, outline, self.rect.width, self.rect.height),
+            border_radius=4
+        )
+
+        rotated_surf = pygame.transform.rotate(player_surf, self.angle)
+        new_rect = rotated_surf.get_rect(center=self.rect.center)
+
+        screen.blit(rotated_surf, new_rect.topleft)
 
 # Old Input Handling 
 
