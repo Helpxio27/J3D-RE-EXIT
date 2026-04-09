@@ -48,19 +48,22 @@ class Menu:
 
         # PLAYER EDIT
         elif self.state == "CUSTOM_EDIT":
-            p = self.game.players[self.player_to_edit]
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_i:
-                    self.load_custom_skin()
+            sim = self.game.player_sims[self.player_to_edit]
+            render = self.game.player_renders[self.player_to_edit]
+
+            if event.key == pygame.K_i:
+                self.load_custom_skin()
+
             if event.key == pygame.K_c:
-                p.color = (
+                render.color = (
                     random.randint(50,255),
                     random.randint(50,255),
                     random.randint(50,255)
                 )
+
             if event.key == pygame.K_ESCAPE:
                 self.state = "CUSTOM_SELECT"
-
+                
         # MAP SELECT
         elif self.state == "MAP_SELECT":
             maps = self.game.available_maps
@@ -143,13 +146,14 @@ class Menu:
             txt = self.font_ui.render(f"PLAYER {i+1}", True, color)
             screen.blit(txt, (250, 300 + i*150))
             # preview player
-            p = self.game.players[i]
+            sim = self.game.player_sims[i]
+            render = self.game.player_renders[i]
             preview_rect = pygame.Rect(0,0,30,30)
             preview_rect.center = (150, 320 + i*150)
-            old_center = p.rect.center
-            p.rect.center = preview_rect.center
-            p.draw(screen)
-            p.rect.center = old_center
+            old_center = sim.rect.center
+            sim.rect.center = preview_rect.center
+            render.draw(screen, sim)
+            sim.rect.center = old_center
 
     def draw_player_edit(self, screen):
         title = self.font_title.render(
@@ -164,11 +168,12 @@ class Menu:
             (150,150,150)
         )
         screen.blit(info, (100,120))
-        p = self.game.players[self.player_to_edit]
-        old_center = p.rect.center
-        p.rect.center = (
+        sim = self.game.player_sims[self.player_to_edit]
+        render = self.game.player_renders[self.player_to_edit]
+        old_center = sim.rect.center
+        sim.rect.center = (
             self.game.WIDTH // 2,
             self.game.HEIGHT // 2
         )
-        p.draw(screen)
-        p.rect.center = old_center
+        render.draw(screen, sim)
+        sim.rect.center = old_center

@@ -12,13 +12,15 @@ from settings import (
     RENDER_FPS,
     BACKGROUND_COLOR
 )
-from player import Player
 from level import Level
 from level import MapRenderer
 # TAG IMPLEMENTATION
 from collision import circle_rect_collision # for tag
 from particles import ParticleEmitter # for effects
 from menu import Menu # Menu system
+
+from player_sim import PlayerSim
+from player_render import PlayerRender
 
 # Making sure the it's the right path depending on the OS (for assets loading)
 def resource_path(relative_path):
@@ -85,16 +87,37 @@ class Game:
         # FPS SHOWER
         self.fps_timer = 0.0
         self.fps_frames = 0
-        # FPS THINGY
-        self.spawn_points = [(500, 700), (500, 700)]
-        self.players = [
-            Player(self.spawn_points[0][0], self.spawn_points[0][1], 
-                   controls={"left": pygame.K_a, "right": pygame.K_d, "jump": pygame.K_w, "drop": pygame.K_s},
-                   color=(255, 50, 50), is_tagger=True),
-            Player(self.spawn_points[1][0], self.spawn_points[1][1], 
-                   controls={"left": pygame.K_LEFT, "right": pygame.K_RIGHT, "jump": pygame.K_UP, "drop": pygame.K_DOWN},
-                   color=(50, 50, 255), is_tagger=False)
+
+        self.controls = [
+            {"left": pygame.K_a, "right": pygame.K_d, "jump": pygame.K_w, "drop": pygame.K_s},
+            {"left": pygame.K_LEFT, "right": pygame.K_RIGHT, "jump": pygame.K_UP, "drop": pygame.K_DOWN}
         ]
+
+        self.spawn_points = [(500, 700), (500, 700)]
+        self.player_sims = [
+            PlayerSim(self.spawn_points[0][0], self.spawn_points[0][1], is_tagger=True),
+            PlayerSim(self.spawn_points[1][0], self.spawn_points[1][1], is_tagger=False)
+        ]
+
+        self.player_renders = [
+            PlayerRender((255,50,50)),
+            PlayerRender((50,50,255))
+        ]
+
+        if len(self.controls) != len(self.player_sims):
+            raise ValueError("Number of controls must match number of players")
+
+
+        # # FPS THINGY
+        # self.spawn_points = [(500, 700), (500, 700)]
+        # self.players = [
+        #     Player(self.spawn_points[0][0], self.spawn_points[0][1], 
+        #            controls={"left": pygame.K_a, "right": pygame.K_d, "jump": pygame.K_w, "drop": pygame.K_s},
+        #            color=(255, 50, 50), is_tagger=True),
+        #     Player(self.spawn_points[1][0], self.spawn_points[1][1], 
+        #            controls={"left": pygame.K_LEFT, "right": pygame.K_RIGHT, "jump": pygame.K_UP, "drop": pygame.K_DOWN},
+        #            color=(50, 50, 255), is_tagger=False)
+        # ]
 
         self.clock = pygame.time.Clock()
         self.running = True
@@ -114,7 +137,7 @@ class Game:
 
     def reset_players_position(self):
         """Reset players to their starting positions before the match begins"""
-        for i, p in enumerate(self.players):
+        for i, p in enumerate(self.player_sims):
             p.rect.center = self.spawn_points[i]
             p.vel_x = 0
             p.vel_y = 0
@@ -135,46 +158,34 @@ class Game:
                         self.reset_to_menu()
 
     def update(self, inputs_per_player):
-        # 1. Update all players
-        print("Server is seeing:", inputs_per_player)
-        for i, p in enumerate(self.players):
-            p.update(self.level.walls, self.render_dt, inputs_per_player[i])
-             # Respawn if go in da void :D
-            if p.rect.x >= SCREEN_HEIGHT + 300 or p.rect.y >= SCREEN_HEIGHT + 300:
-                # Swap roles
-                tagger.is_tagger = False
-                runner.is_tagger = True
-                # Apply tagback cooldown to the old tagger
-                tagger.tagback_cooldown = tagger.tagback_cooldown_time
-                runner.vel_x = 0
-                runner.vel_y = 0
-                runner.stun_timer = 10
-                
-                p.rect.x = 300
-                p.rect.y = 300
-                
+        # 1. Update simulations ONLY
+        for i, sim in enumerate(self.player_sims):
+            # Inputs for this player (default to no input if not provided)
+            inputs = inputs_per_player[i] if i < len(inputs_per_player) else {"left":False,"right":False,"jump":False,"drop":False}
+            sim.update(self.level.walls, inputs) # walls + inputs for calculating new position and state
 
-        # 2. Tag logic (to put somewhere else in the future)
+        # 2. Update render state (particles, animation, etc.)
+        for i, render in enumerate(self.player_renders):
+            render.update(self.render_dt, self.player_sims[i])
+
+        # 3. Tag logic (unchanged)
         tagger = None
         runner = None
 
-        for p in self.players:
+        for p in self.player_sims:
             if p.is_tagger:
                 tagger = p
             else:
                 runner = p
-                
+
         if tagger and runner:
-            # Only tag if runner is not immune from tagback
             if runner.tagback_cooldown == 0 and circle_rect_collision(
                 tagger.rect.center,
                 tagger.tag_radius,
                 runner.rect
             ):
-                # Swap roles
                 tagger.is_tagger = False
                 runner.is_tagger = True
-                # Apply tagback cooldown to the old tagger
                 tagger.tagback_cooldown = tagger.tagback_cooldown_time
                 runner.vel_x = 0
                 runner.vel_y = 0
@@ -196,17 +207,19 @@ class Game:
             # Build per-player inputs **for this frame**
             inputs_per_player = []
             keys = pygame.key.get_pressed()
-            for p in self.players:
+
+            for i, ctrl in enumerate(self.controls):
                 inputs = {
-                    "left": keys[p.controls["left"]],
-                    "right": keys[p.controls["right"]],
-                    "jump": keys[p.controls["jump"]],
-                    "drop": keys[p.controls["drop"]],
+                    "left": keys[ctrl["left"]],
+                    "right": keys[ctrl["right"]],
+                    "jump": keys[ctrl["jump"]],
+                    "drop": keys[ctrl["drop"]],
                 }
                 inputs_per_player.append(inputs)
-
+            
             # Debug print
-            print("Current inputs:", inputs_per_player)
+            # print("Current inputs:", inputs_per_player)
+            
             if self.in_menu: # if we're in the menu, we want to draw it and skip the rest of the loop
                 self.menu.draw(self.virtual_screen)
 
@@ -229,7 +242,7 @@ class Game:
             else:
                 if not self.paused:
                     while accumulator >= FIXED_DT:
-                        self.update(inputs_per_player)  # <-- pass the inputs here!
+                        self.update(inputs_per_player)  # <-- pass the inputs here! what the fuck did i mean here
                         accumulator -= FIXED_DT
                     self.draw()
                 else:
@@ -271,9 +284,8 @@ class Game:
 
         self.renderer.draw(self.virtual_screen)
         self.level.draw(self.virtual_screen)
-        for p in self.players:
-            p.draw(self.virtual_screen)  # player.py will handle scaling later if needed
-
+        for i, render in enumerate(self.player_renders):
+            render.draw(self.virtual_screen, self.player_sims[i])
 
         # 2. Compute scaling to fit the window while preserving aspect ratio
         scale_x = self.WIDTH / SCREEN_WIDTH
