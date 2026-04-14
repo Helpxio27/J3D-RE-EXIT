@@ -1,3 +1,5 @@
+import json
+
 import pygame
 import sys
 import os
@@ -21,6 +23,7 @@ from menu import Menu # Menu system
 
 from player_sim import PlayerSim
 from player_render import PlayerRender
+import socket
 
 # Making sure the it's the right path depending on the OS (for assets loading)
 def resource_path(relative_path):
@@ -38,6 +41,16 @@ def resource_path(relative_path):
 class Game:
     def __init__(self):
         pygame.init()
+
+        self.online = False  # toggle for online mode (not implemented yet)
+
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.setblocking(False)
+        self.server_addr = ("localhost", 9999)
+
+
+
+
 
         # GAME STATES and MENU STATES
         self.paused = False
@@ -216,7 +229,16 @@ class Game:
                     "drop": keys[ctrl["drop"]],
                 }
                 inputs_per_player.append(inputs)
-            
+
+            if self.online:
+                try:
+                    msg = {
+                        "input": inputs_per_player[0]  # assume player 0 is local
+                    }
+                    self.sock.sendto(json.dumps(msg).encode(), self.server_addr)
+                except:
+                    pass            
+
             # Debug print
             # print("Current inputs:", inputs_per_player)
             

@@ -118,7 +118,7 @@ class PlayerSim:
 
 
     # Player network change
-    def to_dict(self):
+    def to_dict(self): #makes the dict
         return {
             "x": self.rect.x,
             "y": self.rect.y,
@@ -127,7 +127,7 @@ class PlayerSim:
             "is_tagger": self.is_tagger
         }
 
-    def from_dict(self, data):
+    def from_dict(self, data): #receieve the dihh~
         self.rect.x = data["x"]
         self.rect.y = data["y"]
         self.vel_x = data["vx"]
