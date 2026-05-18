@@ -1,7 +1,6 @@
-# logic/player_sim.py
+# game/entities/player/sim.py
 import pygame
-from collision import resolve_horizontal, resolve_vertical
-from collision import circle_rect_collision
+from game.world.collision import resolve_horizontal, resolve_vertical, circle_rect_collision
 
 class PlayerSim:
     def __init__(self, x, y, is_tagger=False):
@@ -32,17 +31,16 @@ class PlayerSim:
         self.tag_radius = 30
         self.stun_timer = 0
         self.tagback_cooldown = 0
-        self.tagback_cooldown_time = 30
+        self.tagback_cooldown_time = 30  # move to config/constants.py later
 
-    # =====================
-    # Input handling
-    # =====================
+    # ========================
+    # Input handling | DECIDES 
+    # ========================
     def handle_input(self, inputs):
         wish_dir = 0
         if inputs.get("left"): wish_dir -= 1
         if inputs.get("right"): wish_dir += 1
 
-        # Horizontal movement
         accel = self.accel_ground if self.on_ground else self.accel_air
         self.vel_x += wish_dir * accel
 
@@ -55,70 +53,60 @@ class PlayerSim:
 
         self.vel_x = max(-self.max_speed, min(self.vel_x, self.max_speed))
 
-        # Jump
         if inputs.get("jump") and self.on_ground:
             self.vel_y = self.jump_strength
             self.on_ground = False
 
-        # Drop
-        # if inputs.get("drop") and not self.on_ground:
-        #     self.vel_y += self.gravity * 6
-
-    # =====================
-    # Wall jump
-    # =====================
+    # ===================================
+    # Wall jump | DECIDES | CHECKS | DOES
+    # ===================================
     def try_wall_jump(self, inputs):
         if inputs.get("jump") and self.on_wall and not self.on_ground and self.can_wall_jump:
             self.vel_x = -self.wall_dir * self.wall_jump_x
             self.vel_y = self.wall_jump_y
             self.can_wall_jump = False
 
-    # =====================
-    # Gravity
-    # =====================
+    # ==============
+    # Gravity | DOES
+    # ==============
     def apply_gravity(self):
         if self.on_wall and not self.on_ground and self.vel_y > 4:
             self.vel_y = 4
         else:
             self.vel_y += self.gravity
 
-    # =====================
-    # Update
-    # =====================
+    # =============
+    # Update | DOES
+    # =============
     def update(self, obstacles, inputs):
-        # Skip movement if stunned
         if self.stun_timer > 0:
             self.stun_timer -= 1
             self.vel_x = 0
             self.vel_y = 0
             return
 
-        # Update cooldown
         if self.tagback_cooldown > 0:
             self.tagback_cooldown -= 1
 
-        # Apply input
         self.handle_input(inputs)
         self.try_wall_jump(inputs)
         self.apply_gravity()
 
-        # Horizontal collisions
         self.rect.x += self.vel_x
         self.vel_x, self.on_wall, self.wall_dir = resolve_horizontal(self.rect, obstacles, self.vel_x)
 
-        # Vertical collisions
         self.rect.y += self.vel_y
         self.vel_y, self.on_ground = resolve_vertical(self.rect, obstacles, self.vel_y)
 
-        # Reset wall jump on landing
         if self.on_ground:
             self.can_wall_jump = True
             self.on_wall = False
             self.wall_dir = 0
 
-
-    # Player network change
-    def to_dict(self): # makes the dict
+    # ==============
+    # Network | DOES
+    # ==============
+    def to_dict(self):
         return {
             "x": self.rect.x,
             "y": self.rect.y,
@@ -127,18 +115,19 @@ class PlayerSim:
             "is_tagger": self.is_tagger
         }
 
-    def from_dict(self, data): #receieve the dihh~
+    def from_dict(self, data):
         self.rect.x = data["x"]
         self.rect.y = data["y"]
         self.vel_x = data["vx"]
         self.vel_y = data["vy"]
-        self.is_tagger = data["is_tagger"]        
+        self.is_tagger = data["is_tagger"]
 
-
-    # =====================
-    # Tag check helper
-    # =====================
-    def can_tag(self, other):
-        return self.is_tagger and other.tagback_cooldown == 0 and circle_rect_collision(
-            self.rect.center, self.tag_radius, other.rect
+    # =============
+    # Tag | DECIDES
+    # =============
+    def can_tag(self, other) -> bool:
+        return (
+            self.is_tagger
+            and other.tagback_cooldown == 0
+            and circle_rect_collision(self.rect.center, self.tag_radius, other.rect)
         )
