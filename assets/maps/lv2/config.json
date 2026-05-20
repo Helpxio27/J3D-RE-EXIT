@@ -1,9 +1,8 @@
 {
-  "name": "Tario Overworld",
-  "tileset": "tileset.png",
-  "background": "background.png",
-  "spawn_points": [[500, 700], [300, 400]],
-  "time_limit": 180,
-  "bg_music": "tario_theme.ogg",
-  "preview_img": "preview.png"
+    "name": "Cave",
+    "map": "map.tmj",
+    "tileset": "tileset.png",
+    "background": "background.png",
+    "spawn_points": [[500, 700], [300, 700]],
+    "bg_music": ""
 }

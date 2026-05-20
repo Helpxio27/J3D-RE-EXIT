@@ -1,37 +1,39 @@
 # game/entities/player/sim.py
 import pygame
 from game.world.collision import resolve_horizontal, resolve_vertical, circle_rect_collision
+from config.constants import (
+    TAGBACK_COOLDOWN, TAG_RADIUS, STUN_TIME,
+    PLAYER_WIDTH, PLAYER_HEIGHT,
+    ACCEL_GROUND, ACCEL_AIR, FRICTION, MAX_SPEED,
+    GRAVITY, JUMP_STRENGTH, WALL_JUMP_X, WALL_JUMP_Y
+)
 
 class PlayerSim:
     def __init__(self, x, y, is_tagger=False):
-        self.rect = pygame.Rect(x, y, 30, 30)
+        self.rect = pygame.Rect(x, y, PLAYER_WIDTH, PLAYER_HEIGHT)
 
-        # Physics
         self.vel_x = 0
         self.vel_y = 0
-        self.accel_ground = 1.5
-        self.accel_air = 0.4
-        self.friction = 0.92
-        self.max_speed = 10
-        self.gravity = 0.8
-        self.jump_strength = -15
+        self.accel_ground = ACCEL_GROUND
+        self.accel_air = ACCEL_AIR
+        self.friction = FRICTION
+        self.max_speed = MAX_SPEED
+        self.gravity = GRAVITY
+        self.jump_strength = JUMP_STRENGTH
 
-        # State flags
         self.on_ground = False
         self.on_wall = False
         self.wall_dir = 0
         self.can_wall_jump = True
 
-        # Wall jump
-        self.wall_jump_x = 12
-        self.wall_jump_y = -15
+        self.wall_jump_x = WALL_JUMP_X
+        self.wall_jump_y = WALL_JUMP_Y
 
-        # Tag mechanics
         self.is_tagger = is_tagger
-        self.tag_radius = 30
+        self.tag_radius = TAG_RADIUS
         self.stun_timer = 0
         self.tagback_cooldown = 0
-        self.tagback_cooldown_time = 30  # move to config/constants.py later
+        self.tagback_cooldown_time = TAGBACK_COOLDOWN
 
     # ========================
     # Input handling | DECIDES 

@@ -1,36 +1,45 @@
 # game/world/level.py
 import pygame
 import json
+import os
 from tools.path import resource_path
 
 class Level:
-    def __init__(self, map_path, tileset_path):
-        map_path = resource_path(map_path)
-        tileset_path = resource_path(tileset_path)
+    def __init__(self, map_folder):
+        # Everything is derived from the folder now
+        folder = resource_path(map_folder)
+        cfg_path = os.path.join(folder, "config.json")
 
+        with open(cfg_path) as f:
+            self.config = json.load(f)
+
+        map_path     = os.path.join(folder, self.config["map"])
+        tileset_path = os.path.join(folder, self.config["tileset"])
+
+        # Load map
         with open(map_path) as f:
             self.map_data = json.load(f)
 
         self.map_width  = self.map_data["width"]
         self.map_height = self.map_data["height"]
         self.tile_size  = self.map_data["tilewidth"]
+        self.tiles      = self._load_tileset(tileset_path, self.tile_size)
 
-        self.tiles = self._load_tileset(tileset_path, self.tile_size)
-
-        # Layer 0 = collision layer
-        collision_layer = self.map_data["layers"][0]
+        # Collision walls from layer 0
         self.walls = []
-        for index, tile_id in enumerate(collision_layer["data"]):
+        for index, tile_id in enumerate(self.map_data["layers"][0]["data"]):
             if tile_id != 0:
                 x = (index % self.map_width) * self.tile_size
                 y = (index // self.map_width) * self.tile_size
                 self.walls.append(pygame.Rect(x, y, self.tile_size, self.tile_size))
 
+        # Spawn points from config (fallback to defaults)
+        self.spawn_points = self.config.get("spawn_points", [[500, 700], [300, 700]])
+
     def _load_tileset(self, tileset_path, tile_size):
-        """Slices the tileset image into a dict of {tile_id: Surface}"""
         image = pygame.image.load(tileset_path).convert_alpha()
         tiles = {}
-        tile_id = 1  # Tiled IDs start at 1
+        tile_id = 1
         for y in range(0, image.get_height(), tile_size):
             for x in range(0, image.get_width(), tile_size):
                 tiles[tile_id] = image.subsurface(pygame.Rect(x, y, tile_size, tile_size))
@@ -38,7 +47,6 @@ class Level:
         return tiles
 
     def draw(self, screen, scale_x=1, scale_y=1):
-        """Draws layer 0 (collision tiles)"""
         for index, tile_id in enumerate(self.map_data["layers"][0]["data"]):
             if tile_id == 0:
                 continue
@@ -53,7 +61,6 @@ class Level:
 
 
 class MapRenderer:
-    """Draws all decoration layers (everything above layer 0)"""
     def __init__(self, level):
         self.level = level
 

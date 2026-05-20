@@ -5,9 +5,9 @@ from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT
 from game.world.level import Level, MapRenderer
 import tkinter as tk
 from tkinter import filedialog
+from game.scenes.base_scene import BaseScene
 
-
-class MenuScene:
+class MenuScene(BaseScene):
     def __init__(self, game):
         self.game = game  # needs: available_maps, player_renders, start_game()
 
@@ -141,3 +141,9 @@ class MenuScene:
         self.game.player_renders[self.player_to_edit].draw_at(
             screen, self.game.player_sims[self.player_to_edit], preview_center
         )
+
+    # ==============================
+    # Small update helper
+    # ==============================
+    def update(self, accumulator):
+        return accumulator  # menu doesn't tick, just pass it through
