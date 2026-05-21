@@ -156,7 +156,7 @@ class App:
             for ctrl in self.controls
         ]
 
-    def _send_network_input(self, input_dict):
+    def _send_network_input(self, input_dict): # not yet built out, but will send local player input to server for online mode
         try:
             self.sock.sendto(json.dumps({"input": input_dict}).encode(), self.server_addr)
         except:
