@@ -10,7 +10,7 @@ SIM_FPS = 60
 FIXED_DT = 1.0 / SIM_FPS
 
 # Render FPS — uncapped by default
-RENDER_FPS = 1000000
+RENDER_FPS = 144
 
 # Fallback background color
 BACKGROUND_COLOR = (30, 30, 30)

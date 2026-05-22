@@ -12,3 +12,5 @@ class BaseItem:
 
     def draw(self, surface):
         pass
+
+

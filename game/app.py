@@ -148,19 +148,18 @@ class App:
         keys = pygame.key.get_pressed()
         return [
             {
-                "left":  keys[ctrl["left"]],
-                "right": keys[ctrl["right"]],
-                "jump":  keys[ctrl["jump"]],
-                "drop":  keys[ctrl["drop"]],
+                "left":      keys[ctrl["left"]],
+                "right":     keys[ctrl["right"]],
+                "jump":      keys[ctrl["jump"]],
+                "drop":      keys[ctrl["drop"]],
+                "use_power": keys[ctrl["use_power"]],   # ← add
             }
             for ctrl in self.controls
         ]
 
-    def _send_network_input(self, input_dict): # not yet built out, but will send local player input to server for online mode
-        try:
-            self.sock.sendto(json.dumps({"input": input_dict}).encode(), self.server_addr)
-        except:
-            pass
+    def _send_network_input(self, input_dict: dict):
+        if hasattr(self, 'client'):
+            self.client.send_input(input_dict)
 
     # =====================
     # DOES: the main loop — now just delegates to current scene

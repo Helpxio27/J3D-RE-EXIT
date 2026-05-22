@@ -35,6 +35,9 @@ class PlayerSim:
         self.tagback_cooldown = 0
         self.tagback_cooldown_time = TAGBACK_COOLDOWN
 
+        self.power       = None     # what power?
+        self.power_ready = True     # can use?
+        self.power_timer = 0        # cooldown timer 
     # ========================
     # Input handling | DECIDES 
     # ========================
@@ -110,20 +113,23 @@ class PlayerSim:
     # ==============
     def to_dict(self):
         return {
-            "x": self.rect.x,
-            "y": self.rect.y,
-            "vx": self.vel_x,
-            "vy": self.vel_y,
-            "is_tagger": self.is_tagger
+            "x":           self.rect.x,
+            "y":           self.rect.y,
+            "vx":          self.vel_x,
+            "vy":          self.vel_y,
+            "is_tagger":   self.is_tagger,
+            "power":       self.power,        
+            "power_ready": self.power_ready,  
         }
 
     def from_dict(self, data):
-        self.rect.x = data["x"]
-        self.rect.y = data["y"]
-        self.vel_x = data["vx"]
-        self.vel_y = data["vy"]
-        self.is_tagger = data["is_tagger"]
-
+        self.rect.x      = data["x"]
+        self.rect.y      = data["y"]
+        self.vel_x       = data["vx"]
+        self.vel_y       = data["vy"]
+        self.is_tagger   = data["is_tagger"]
+        self.power       = data.get("power", None)       
+        self.power_ready = data.get("power_ready", True) 
     # =============
     # Tag | DECIDES
     # =============

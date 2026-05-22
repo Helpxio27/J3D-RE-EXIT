@@ -29,6 +29,20 @@ class GameplayScene(BaseScene):
 
         if self.app.online:
             self.app._send_network_input(inputs[0])
+            messages = self.app.client.receive()
+            for msg in messages:
+                if msg["type"] == "state":
+                    for p_data in msg["players"]:
+                        pid = p_data.get("id", 0)
+                        if pid != self.app.client.player_id:
+                            # remote player — just snap to server truth
+                            self.app.player_sims[pid].from_dict(p_data)
+                        else:
+                            # local player — only correct if too far off
+                            self.app.client.apply_correction(
+                                self.app.player_sims[pid], p_data
+                            )
+        
 
         while accumulator >= FIXED_DT:
             self._tick(inputs)
@@ -57,12 +71,10 @@ class GameplayScene(BaseScene):
             runner.vel_x = 0
             runner.vel_y = 0
             runner.stun_timer = 10
+            
             # Camera sequence on tag
             self.camera.clear_queue()
             self.camera.add_action("shake", 14)
-            self.camera.add_action("zoom", 1.25, 0.12)
-            self.camera.add_action("wait", 0.4)
-            self.camera.add_action("zoom", 1.0, 0.05)
 
     def draw(self, screen):
         if self.paused:
@@ -87,3 +99,4 @@ class GameplayScene(BaseScene):
         text = font.render("PAUSED  |  ESC = Resume  |  Q = Menu", True, (255, 255, 255))
         # Blit the text surface onto the main with pos 100, 100
         screen.blit(text, (100, 100))
+
