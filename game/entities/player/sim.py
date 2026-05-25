@@ -111,15 +111,16 @@ class PlayerSim:
     # ==============
     # Network | DOES
     # ==============
-    def to_dict(self):
+    def to_dict(self, player_id=None):
         return {
+            "id":          player_id,    
             "x":           self.rect.x,
             "y":           self.rect.y,
             "vx":          self.vel_x,
             "vy":          self.vel_y,
             "is_tagger":   self.is_tagger,
-            "power":       self.power,        
-            "power_ready": self.power_ready,  
+            "power":       self.power,
+            "power_ready": self.power_ready,
         }
 
     def from_dict(self, data):

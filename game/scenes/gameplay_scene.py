@@ -24,38 +24,48 @@ class GameplayScene(BaseScene):
     def update(self, accumulator):
         if self.paused:
             return accumulator
-
         inputs = self.app._build_inputs()
-
-        if self.app.online:
-            self.app._send_network_input(inputs[0])
+        # Send local input to server
+        if self.app.online and hasattr(self.app, 'client') and self.app.client:
+            print(f"[CLIENT] id={self.app.client.player_id} room={self.app.client.room_code} tick={self.app.client.tick}") # Debug
+            local_id = self.app.client.player_id
+            self.app.client.send_input(inputs[local_id])
+            # Apply server corrections for all players
             messages = self.app.client.receive()
             for msg in messages:
-                if msg["type"] == "state":
+                if msg.get("type") == "state":
                     for p_data in msg["players"]:
-                        pid = p_data.get("id", 0)
-                        if pid != self.app.client.player_id:
-                            # remote player — just snap to server truth
-                            self.app.player_sims[pid].from_dict(p_data)
+                        pid = p_data.get("id")
+                        if pid is None:
+                            continue
+                        sim = self.app.player_sims[pid]
+                        if pid == local_id:
+                            self.app.client.apply_correction(sim, p_data)
                         else:
-                            # local player — only correct if too far off
-                            self.app.client.apply_correction(
-                                self.app.player_sims[pid], p_data
-                            )
-        
+                            sim.from_dict(p_data)  # remote — always snap to truth
 
+        # Tick
         while accumulator >= FIXED_DT:
             self._tick(inputs)
             accumulator -= FIXED_DT
 
-        self.camera.update(self.app.render_dt)  # ← pass real dt here
+        self.camera.update(self.app.render_dt)
         return accumulator
-
+    
     def _tick(self, inputs):
-        for i, sim in enumerate(self.app.player_sims):
-            inp = inputs[i] if i < len(inputs) else {}
+        if self.app.online and hasattr(self.app, 'client') and self.app.client:
+            local_id = self.app.client.player_id
+            # Only simulate local player — remote player comes from server
+            sim = self.app.player_sims[local_id]
+            inp = inputs[local_id] if local_id < len(inputs) else {}
             sim.update(self.app.level.walls, inp)
+        else:
+            # Offline — simulate all players locally
+            for i, sim in enumerate(self.app.player_sims):
+                inp = inputs[i] if i < len(inputs) else {}
+                sim.update(self.app.level.walls, inp)
 
+        # Always update renders for all players
         for i, render in enumerate(self.app.player_renders):
             render.update(self.app.render_dt, self.app.player_sims[i])
 

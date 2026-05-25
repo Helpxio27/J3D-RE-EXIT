@@ -175,7 +175,6 @@ class App:
             self.render_dt = frame_time
             frame_time = min(frame_time, 0.25)
             accumulator += frame_time
-
             # Events go to current scene
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -183,14 +182,11 @@ class App:
                 if event.type == pygame.VIDEORESIZE:
                     self._handle_resize(event.w, event.h)
                 self.current_scene.handle_events(event)
-
             # Update + draw current scene
             accumulator = self.current_scene.update(accumulator)
-
             self.current_scene.draw(self.virtual_screen)
             self._blit_scaled()
             pygame.display.flip()
-
             # FPS counter
             self.fps_timer += frame_time
             self.fps_frames += 1
@@ -198,7 +194,6 @@ class App:
                 print(f"FPS: {self.fps_frames}")
                 self.fps_timer -= 1.0
                 self.fps_frames = 0
-
             self.clock.tick(RENDER_FPS)
 
         pygame.quit()

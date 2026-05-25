@@ -1,0 +1,25 @@
+# config/constants.py
+
+# Tag mechanics
+TAGBACK_COOLDOWN = 30
+TAG_RADIUS = 30
+STUN_TIME = 10
+
+# Player physics
+PLAYER_WIDTH = 30
+PLAYER_HEIGHT = 30
+ACCEL_GROUND = 1.5
+ACCEL_AIR = 0.4
+FRICTION = 0.92
+MAX_SPEED = 10
+GRAVITY = 0.8
+JUMP_STRENGTH = -15
+WALL_JUMP_X = 12
+WALL_JUMP_Y = -15
+
+# Player colors
+PLAYER_1_COLOR = (255, 50, 50)
+PLAYER_2_COLOR = (50, 50, 255)
+
+# Spawn points
+SPAWN_POINTS = [(500, 700), (300, 700)]

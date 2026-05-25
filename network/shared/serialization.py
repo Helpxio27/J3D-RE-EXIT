@@ -23,7 +23,7 @@ def encode_state(room_code: str, tick: int, player_sims: list) -> bytes:
         "type":    MSG_STATE,
         "room":    room_code.upper(),
         "tick":    tick,
-        "players": [sim.to_dict() for sim in player_sims]
+        "players": [sim.to_dict(player_id=i) for i, sim in enumerate(player_sims)]
     }).encode()
 
 def encode_ready(room_code: str, assigned_id: int) -> bytes:

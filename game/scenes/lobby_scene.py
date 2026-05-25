@@ -146,11 +146,29 @@ class LobbyScene(BaseScene):
             self.client.error = None
             self.state = "ERROR"
 
+    def _attempt_join(self):
+        if self.code_input == "OOOO":
+            # Local play — skip network entirely
+            self.app.online = False
+            from game.scenes.menu_scene import MenuScene
+            scene = MenuScene(self.app)
+            scene.state = "MAP_SELECT"
+            scene._apply_state("MAP_SELECT")
+            self.app.replace_scene(scene)
+            return
+
+        # Online play
+        self.client = GameClient()
+        self.client.join(self.code_input)
+        self.app.client = self.client
+        self.state = "WAITING"
+        self.camera.add_action("zoom", 1.05, 0.08)
+
     def _start_game(self):
+        self.app.online = True
         self.camera.add_action("shake", 8)
         self.camera.add_action("zoom", 1.1, 0.15)
         self.camera.add_action("wait", 0.3)
-        # Pick first map for now — later lobby can have map vote
         self.app.start_game(0)
 
     # =====================
