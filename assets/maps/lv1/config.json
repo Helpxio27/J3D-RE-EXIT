@@ -3,6 +3,8 @@
     "map": "map.tmj",
     "tileset": "tileset.png",
     "background": "background.png",
+    "preview": "preview.png",
     "spawn_points": [[500, 700], [300, 700]],
-    "bg_music": ""
+    "time_limit": 60.0,
+    "bg_music": "../../audio/music/map1.mp3"
 }

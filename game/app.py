@@ -12,7 +12,8 @@ from game.entities.player.sim import PlayerSim
 from game.entities.player.render import PlayerRender
 from game.scenes.menu_scene import MenuScene
 import socket
-
+import os, json
+from tools.path import resource_path
 
 class App:
     def __init__(self):
@@ -32,12 +33,34 @@ class App:
         self.sock.setblocking(False)
         self.server_addr = ("localhost", 9999)
 
-        # Maps
-        self.available_maps = [
-            {"name": "ARENA CLASSIC", "folder": "assets/maps/lv1"},
-            {"name": "THE CAVE",      "folder": "assets/maps/lv2"},
-            {"name": "TARIO",         "folder": "assets/maps/lv3"},
-        ]
+        # Maps 
+        def _discover_maps(self): # Weird shit 
+            folders = [
+                "assets/maps/lv1",
+                "assets/maps/lv2", 
+                "assets/maps/lv3",
+                "assets/maps/lv4",
+                "assets/maps/lv5",
+                "assets/maps/lv6",
+            ]
+            maps = []
+            for folder in folders:
+                cfg_path = resource_path(os.path.join(folder, "config.json"))
+                if os.path.exists(cfg_path):
+                    with open(cfg_path) as f:
+                        cfg = json.load(f)
+                    maps.append({
+                        "name":   cfg.get("name", os.path.basename(folder).upper()),
+                        "folder": folder
+                    })
+                else:
+                    maps.append({
+                        "name":   "COMING SOON",
+                        "folder": folder
+                    })
+            return maps
+        
+        self.available_maps = _discover_maps(self)
 
         # Players
         # Loading configs
@@ -78,6 +101,19 @@ class App:
         # The top of the stack is always the active scene
         self.scene_stack = [MenuScene(self)]
 
+        from game.systems.sound_system import SoundSystem
+        self.sounds = SoundSystem()
+
+        self.sounds.load("tag",          "assets/audio/sfx/tag.mp3")
+        self.sounds.load("menu_click",   "assets/audio/sfx/menu_click.mp3")
+        self.sounds.load("power_laser",  "assets/audio/sfx/power_laser.mp3")
+        self.sounds.load("power_speed",  "assets/audio/sfx/power_speed.mp3")
+        self.sounds.load("power_freeze", "assets/audio/sfx/power_freeze.mp3")
+        self.sounds.load("power_glitch", "assets/audio/sfx/power_glitch.mp3")
+
+        # Menu music starts immediately
+        self.sounds.play_music("assets/audio/music/menu.mp3")
+
     # =====================
     # Scene stack helpers
     # =====================
@@ -102,14 +138,41 @@ class App:
     # =====================
     # DOES: called by menu when player picks a map
     # =====================
+
+    def _reset_players(self):
+        from config.constants import MAX_SPEED
+        for i, sim in enumerate(self.player_sims):
+            sim.rect.center = self.spawn_points[i]
+            sim.vel_x = 0
+            sim.vel_y = 0
+            sim.max_speed = MAX_SPEED  # ← reset speed to default
+            sim.stun_timer = 0
+            sim.tagback_cooldown = 0
+            sim.power = None
+            sim.power_ready = True
+
     def start_game(self, map_idx):
         from game.scenes.gameplay_scene import GameplayScene
+        import os
         m = self.available_maps[map_idx]
         self.level = Level(m["folder"])
         self.renderer = MapRenderer(self.level)
+
+        # Load background from this map's folder
+        try:
+            bg_path = resource_path(os.path.join(m["folder"], self.level.config.get("background", "background.png")))
+            self.background = pygame.transform.scale(
+                pygame.image.load(bg_path).convert(),
+                (SCREEN_WIDTH, SCREEN_HEIGHT)
+            )
+        except:
+            self.background = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            self.background.fill(BACKGROUND_COLOR)
+
         self._reset_players()
+        self.online = False if not hasattr(self, 'client') or not self.client else self.online
         self.replace_scene(GameplayScene(self))
-        
+
     # =====================
     # DOES: returns to menu cleanly
     # =====================
@@ -152,7 +215,7 @@ class App:
                 "right":     keys[ctrl["right"]],
                 "jump":      keys[ctrl["jump"]],
                 "drop":      keys[ctrl["drop"]],
-                "use_power": keys[ctrl["use_power"]],   # ← add
+                "use_power": keys[ctrl["use_power"]],
             }
             for ctrl in self.controls
         ]
@@ -164,6 +227,7 @@ class App:
     # =====================
     # DOES: the main loop — now just delegates to current scene
     # =====================
+
     def run(self):
         accumulator = 0.0
         last_time = pygame.time.get_ticks() / 1000.0

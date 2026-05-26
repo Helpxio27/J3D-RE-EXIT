@@ -22,6 +22,7 @@ THEME = {
     "font_subtitle":        ("Arial", 32, False),
     "font_ui":              ("Arial", 40, False),
     "font_small":           ("Arial", 24, False),
+    "font_timer":           ("Arial", 28, True),
 
     # =====================
     # BUTTONS

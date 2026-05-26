@@ -47,6 +47,14 @@ class LobbyScene(BaseScene):
         self._dot_timer = 0.0
         self._dot_count = 0
 
+        self.hint = Label("Type a 4-letter code   ENTER to join   ESC to go back   OOOO = Local play",
+                  font_key="font_small", color_key="secondary")
+        self.online_notice = Label(
+            "/ ★ \ Online matches use a random map",
+            font_key="font_small",
+            color_key="secondary"
+        )
+        self.online_notice.fade_in()
     # =====================
     # EVENTS
     # =====================
@@ -112,6 +120,7 @@ class LobbyScene(BaseScene):
         self.prompt.update()
         self.code_display.update()
         self.hint.update()
+        self.online_notice.update()
 
         # Dots animation
         self._dot_timer += dt
@@ -130,29 +139,41 @@ class LobbyScene(BaseScene):
                 self.state = "ENTER_CODE"
 
         return accumulator
-
+    
     def _check_server_response(self):
         messages = self.client.receive()
         for msg in messages:
-            pass  # state packets handled in gameplay
+            if msg.get("type") == "state":
+                map_idx = msg.get("map_idx", 0)  # ← read from state packet
+                self.app.online = True
+                self._do_start_game(map_idx)
+                return
+            if msg.get("type") == "event" and msg.get("event") == "match_start":
+                map_idx = msg["data"].get("map_idx", 0)
+                self.app.online = True
+                self._do_start_game(map_idx)
+                return
 
-        # Check if we got the ready signal
-        if self.client.connected:
-            self._start_game()
-
-        # Check for errors
         if self.client.error:
             self._show_error(self.client.error)
             self.client.error = None
             self.state = "ERROR"
 
+    def _do_start_game(self, map_idx):
+        self.camera.add_action("shake", 8)
+        self.camera.add_action("zoom", 1.1, 0.15)
+        self.camera.add_action("wait", 0.3)
+        self.app.start_game(map_idx)
+
     def _attempt_join(self):
+        print(f"[LOBBY] _attempt_join called, code='{self.code_input}'")
         if self.code_input == "OOOO":
-            # Local play — skip network entirely
+            # Local play | skip network, go straight to map select
             self.app.online = False
+            self.app.client = None
             from game.scenes.menu_scene import MenuScene
             scene = MenuScene(self.app)
-            scene.state = "MAP_SELECT"
+            scene._transition_to("MAP_SELECT")
             scene._apply_state("MAP_SELECT")
             self.app.replace_scene(scene)
             return
@@ -166,6 +187,7 @@ class LobbyScene(BaseScene):
 
     def _start_game(self):
         self.app.online = True
+        print(f"[CLIENT] Starting game online={self.app.online} client={self.app.client} connected={self.app.client.connected}")
         self.camera.add_action("shake", 8)
         self.camera.add_action("zoom", 1.1, 0.15)
         self.camera.add_action("wait", 0.3)
@@ -193,9 +215,10 @@ class LobbyScene(BaseScene):
     def _draw_enter_code(self, screen):
         self.prompt.draw(screen, SCREEN_WIDTH // 2, 260, anchor="midtop")
         self.code_display.draw(screen, SCREEN_WIDTH // 2, 340, anchor="midtop")
+        self.online_notice.draw(screen, SCREEN_WIDTH // 2, 460, anchor="midtop")
 
         if self.state == "ERROR":
-            self.error_label.draw(screen, SCREEN_WIDTH // 2, 460, anchor="midtop")
+            self.error_label.draw(screen, SCREEN_WIDTH // 2, 510, anchor="midtop")
 
     def _draw_waiting(self, screen):
         dots = "." * self._dot_count

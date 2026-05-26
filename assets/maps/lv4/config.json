@@ -1,0 +1,10 @@
+{
+    "name": "Hotel",
+    "map": "map.tmj",
+    "tileset": "tileset.png",
+    "background": "background.png",
+    "preview": "preview.png",
+    "spawn_points": [[500, 700], [300, 700]],
+    "time_limit": 60.0,
+    "bg_music": "../../audio/music/map4.mp3"
+}

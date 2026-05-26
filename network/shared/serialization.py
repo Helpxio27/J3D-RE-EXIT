@@ -1,6 +1,6 @@
 # network/shared/serialization.py
 import json
-from network.shared.protocol import MSG_INPUT, MSG_STATE, MSG_JOIN, MSG_READY, MSG_ERROR
+from network.shared.protocol import MSG_EVENT, MSG_INPUT, MSG_STATE, MSG_JOIN, MSG_READY, MSG_ERROR
 
 def encode_join(room_code: str, player_id: int) -> bytes:
     return json.dumps({
@@ -44,6 +44,15 @@ def decode(data: bytes) -> dict | None:
         return json.loads(data.decode())
     except Exception:
         return None
+
+def encode_event(room_code: str, player_id: int, event_type: str, data: dict) -> bytes:
+    return json.dumps({
+        "type":      MSG_EVENT,
+        "room":      room_code.upper(),
+        "player_id": player_id,
+        "event":     event_type,
+        "data":      data
+    }).encode()
 
 def needs_correction(sim, server_data: dict, threshold: float) -> bool:
     dx = abs(sim.rect.x - server_data["x"])

@@ -26,6 +26,9 @@ class MenuScene(BaseScene):
         self.particles = ParticleEmitter()
         self._particle_timer = 0.0
 
+        # Map cards (in map select) — store data + thumbnail for each map
+        self.map_cards = []
+
         # Logo
         self.logo = Logo()
         self.logo.animate_in()
@@ -93,11 +96,7 @@ class MenuScene(BaseScene):
             self.logo.animate_in()
 
         elif new_state == "MAP_SELECT":
-            self.map_buttons = [
-                Button(m["name"]) for m in self.game.available_maps
-            ]
-            self._animate_buttons_in(self.map_buttons)
-            self._update_map_selection()
+            self._build_map_cards()
             self.state_title = Label("SELECT MAP", font_key="font_title", color_key="primary")
             self.state_title.fade_in()
 
@@ -113,6 +112,49 @@ class MenuScene(BaseScene):
                 font_key="font_title", color_key="primary"
             )
             self.state_title.fade_in()
+
+    def _build_map_cards(self):
+        from game.ui.map_card import MapCard
+        import os
+        from tools.path import resource_path
+
+        self.map_cards = []
+        for m in self.game.available_maps:
+            folder = m["folder"]
+            # Try loading preview, fall back to background, fall back to solid color
+            surf = None
+            for img_name in ["preview.png", "background.png"]:
+                img_path = resource_path(os.path.join(folder, img_name))
+                if os.path.exists(img_path):
+                    try:
+                        surf = pygame.image.load(img_path).convert()
+                        break
+                    except:
+                        pass
+            if surf is None:
+                surf = pygame.Surface((340, 170))
+                surf.fill(THEME["surface"])
+            card = MapCard(m["name"], surf)
+            # Lock if no map.tmj exists
+            map_path = resource_path(os.path.join(folder, "map.tmj"))
+            card.locked = not os.path.exists(map_path)
+            card.fade_in()
+            self.map_cards.append(card)
+
+    def _get_card_positions(self):
+        cols = 3
+        pad_x = 60
+        pad_y = 260        # ← was 160, now lower
+        spacing_x = (SCREEN_WIDTH - pad_x * 2) // cols
+        spacing_y = 280
+        positions = []
+        for i in range(len(self.map_cards)):
+            col = i % cols
+            row = i // cols
+            cx = pad_x + spacing_x // 2 + col * spacing_x
+            cy = pad_y + row * spacing_y
+            positions.append((cx, cy))
+        return positions
 
     def _update_map_selection(self):
         for i, btn in enumerate(self.map_buttons):
@@ -151,6 +193,7 @@ class MenuScene(BaseScene):
             self._sync_selection()
             self.camera.shake(3)
         if key == pygame.K_RETURN:
+            self.game.sounds.play("menu_click")
             if self.selection == 0:
                 # Go to lobby instead of directly to map select
                 from game.scenes.lobby_scene import LobbyScene
@@ -182,16 +225,23 @@ class MenuScene(BaseScene):
             self._transition_to("CUSTOM_SELECT")
 
     def _handle_map_select(self, key):
-        maps = self.game.available_maps
+        count = len(self.game.available_maps)
+        if key == pygame.K_LEFT:
+            self.selected_map_idx = (self.selected_map_idx - 1) % count
+            self.camera.shake(3)
+        if key == pygame.K_RIGHT:
+            self.selected_map_idx = (self.selected_map_idx + 1) % count
+            self.camera.shake(3)
         if key == pygame.K_UP:
-            self.selected_map_idx = (self.selected_map_idx - 1) % len(maps)
-            self._update_map_selection()
+            self.selected_map_idx = (self.selected_map_idx - 3) % count
             self.camera.shake(3)
         if key == pygame.K_DOWN:
-            self.selected_map_idx = (self.selected_map_idx + 1) % len(maps)
-            self._update_map_selection()
-            self.camera.shake(3)
+            self.selected_map_idx = (self.selected_map_idx + 3) % count
+            self.camera.shake(3)        
         if key == pygame.K_RETURN:
+            if self.map_cards[self.selected_map_idx].locked:
+                self.camera.shake(8)  # nuhuh skake ahh blud
+                return
             self.camera.add_action("shake", 10)
             self.camera.add_action("zoom", 1.1, 0.15)
             self.camera.add_action("wait", 0.3)
@@ -265,9 +315,8 @@ class MenuScene(BaseScene):
 
     def _active_buttons(self):
         if self.state == "MAIN":          return self.main_buttons
-        if self.state == "MAP_SELECT":    return self.map_buttons
         if self.state == "CUSTOM_SELECT": return self.player_buttons
-        return []
+        return []   # map cards update themselves in _draw_map_select
 
     # =====================
     # DRAW
@@ -315,10 +364,13 @@ class MenuScene(BaseScene):
             btn.draw(screen, 120, 360 + i * 100, anchor="midleft")
 
     def _draw_map_select(self, screen):
-        self.state_title.draw(screen, SCREEN_WIDTH // 2, 80, anchor="midtop")
+        self.state_title.draw(screen, SCREEN_WIDTH // 2, 40, anchor="midtop")
 
-        for i, btn in enumerate(self.map_buttons):
-            btn.draw(screen, 120, 280 + i * 90, anchor="midleft")
+        positions = self._get_card_positions()
+        for i, card in enumerate(self.map_cards):
+            card.update(i == self.selected_map_idx)
+            if i < len(positions):
+                card.draw(screen, *positions[i])
 
     def _draw_player_select(self, screen):
         self.state_title.draw(screen, SCREEN_WIDTH // 2, 80, anchor="midtop")

@@ -20,7 +20,8 @@ class GameClient:
         self.sock.setblocking(False)
 
         self._input_history = {}
-
+        self.match_started = False
+        
     # =====================
     # DOES: sends join request for a room code
     # =====================
@@ -28,7 +29,8 @@ class GameClient:
         self.room_code = room_code.upper()
         packet = encode_join(self.room_code, 0)  # id 0, server will assign real one
         self.sock.sendto(packet, self.server_addr)
-
+        print(f"[CLIENT] Sent join to {self.server_addr} room={self.room_code}")
+        
     # =====================
     # DOES: sends local input to server
     # =====================
@@ -49,6 +51,19 @@ class GameClient:
         }
 
     # =====================
+    # DOES: sends an event (like power use) to the server
+    # =====================
+    def send_event(self, event_type: str, data: dict):
+        if not self.connected or not self.room_code:
+            return
+        from network.shared.serialization import encode_event
+        packet = encode_event(self.room_code, self.player_id, event_type, data)
+        try:
+            self.sock.sendto(packet, self.server_addr)
+        except Exception:
+            pass
+
+    # =====================
     # DOES: reads all pending packets
     # returns list of decoded messages
     # =====================
@@ -65,7 +80,8 @@ class GameClient:
                 if msg["type"] == MSG_READY:
                     self.player_id = msg["player_id"]
                     self.connected = True
-                    print(f"[CLIENT] Joined as player {self.player_id}")
+                    print(f"[CLIENT] Joined as player {self.player_id}")            
+                    print(f"[CLIENT] Got READY — player_id={self.player_id} room={self.room_code}")
 
                 elif msg["type"] == MSG_ERROR:
                     self.error = msg["message"]
