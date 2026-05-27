@@ -14,30 +14,26 @@ class GameplayScene(BaseScene):
     def __init__(self, app):
         self.app = app
         self.paused = False
+        self._match_started = False
+        self._start_timer = 0.0
+        self._match_over = False
+        self._handling_timeout = False
+
+        # Always reset players on scene creation
+        self.app._reset_players()
+
         self.camera = Camera(SCREEN_WIDTH, SCREEN_HEIGHT)
-        self.timer_system = MatchTimerSystem(
-            player_count=2,
-            duration=self.app.level.config.get("time_limit", 60.0)
-        )
-        # Start timer for initial tagger
-        tagger_id = next((i for i, s in enumerate(self.app.player_sims) if s.is_tagger), 0)
-        self.timer_system.set_tagger(tagger_id)
+        self.item_manager = ItemManager()
 
         # HUD
         colors = [r.color for r in self.app.player_renders]
         self.hud = HUD(colors)
 
-        # Timer
-        self.timer_system = MatchTimerSystem(
-            player_count=2,
-            duration=self.app.level.config.get("time_limit", 60.0)
-        )
-        tagger_id = next((i for i, s in enumerate(self.app.player_sims) if s.is_tagger), 0)
-        self.timer_system.set_tagger(tagger_id)
-        self._handling_timeout = False
-        self.item_manager = ItemManager()
-        self._match_over = False
-    
+        # Timer — created once, set_tagger fires after countdown in update()
+        duration = self.app.level.config.get("time_limit", 60.0)
+        print(f"[TIMER] Starting with duration={duration}")
+        self.timer_system = MatchTimerSystem(player_count=2, duration=duration)
+        
     def handle_events(self, event):
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
@@ -54,8 +50,18 @@ class GameplayScene(BaseScene):
     def update(self, accumulator):
         if self.paused:
             return accumulator
-        inputs = self.app._build_inputs()
 
+        # Countdown before match starts
+        if not self._match_started:
+            self._start_timer = getattr(self, '_start_timer', 0) + self.app.render_dt
+            if self._start_timer >= 3.0:    # 3 second delay
+                self._match_started = True
+                tagger_id = next((i for i, s in enumerate(self.app.player_sims) if s.is_tagger), 0)
+                self.timer_system.set_tagger(tagger_id)
+            return accumulator              # don't tick until started
+
+        inputs = self.app._build_inputs()
+        
         if self.app.online and hasattr(self.app, 'client') and self.app.client:
             local_id = self.app.client.player_id
             self.app.client.send_input(inputs[local_id])
@@ -213,10 +219,16 @@ class GameplayScene(BaseScene):
         self.item_manager.draw(world_surface)
         screen.blit(self.camera.apply(world_surface), (0, 0))
 
-        # HUD drawn on top of camera | never shakes with the world
+        # Countdown overlay
+        if not self._match_started:
+            countdown = max(1, 3 - int(getattr(self, '_start_timer', 0)))
+            font = pygame.font.SysFont("Arial", 120, bold=True)
+            text = font.render(str(countdown), True, (255, 220, 0))
+            text.set_alpha(200)
+            screen.blit(text, text.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2)))
+
         self.hud.draw(screen, self.app.player_sims, self.timer_system,
                     screen.get_width(), screen.get_height())
-
     def _draw_pause(self, screen):
         # Defines a font and renders the pause text onto the screen
         font = pygame.font.SysFont(None, 48)

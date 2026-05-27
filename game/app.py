@@ -195,6 +195,7 @@ class App:
 
     def _reset_players(self):
         from config.constants import MAX_SPEED
+        print(f"[RESET] Resetting players")
         for i, sim in enumerate(self.player_sims):
             sim.rect.center = self.spawn_points[i]
             sim.vel_x = 0

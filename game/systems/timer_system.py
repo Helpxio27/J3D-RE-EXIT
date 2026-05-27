@@ -20,6 +20,7 @@ class PlayerTimer:
         return self.time_left <= 0
 
     def update(self, dt: float):
+        dt = min(dt, 0.05)  # cap at 50ms — prevents huge jumps on slow frames
         if self.running and self.time_left > 0:
             self.time_left -= dt
             if self.time_left < 0:
@@ -50,6 +51,7 @@ class MatchTimerSystem:
     def update(self, dt: float):
         if self.finished:
             return
+        dt = min(dt, 0.05)  # cap here too
         for i, timer in enumerate(self.timers):
             timer.update(dt)
             if timer.expired and not self.finished:

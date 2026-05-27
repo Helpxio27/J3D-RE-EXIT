@@ -40,6 +40,7 @@ class MenuScene(BaseScene):
         # Main menu buttons
         self.main_buttons = [
             Button("START GAME"),
+            Button("TUTORIAL"),
             Button("CUSTOMIZE PLAYERS"),
             Button("EXIT", style="danger"),
         ]
@@ -112,6 +113,10 @@ class MenuScene(BaseScene):
                 font_key="font_title", color_key="primary"
             )
             self.state_title.fade_in()
+        
+        elif new_state == "TUTORIAL":
+            self.state_title = Label("TUTORIAL", font_key="font_title", color_key="primary")
+            self.state_title.fade_in()
 
     def _build_map_cards(self):
         from game.ui.map_card import MapCard
@@ -169,12 +174,15 @@ class MenuScene(BaseScene):
     # =====================
     def handle_events(self, event):
         if self._transitioning:
-            return  # block input during transition
+            return
         if event.type != pygame.KEYDOWN:
             return
 
         if self.state == "MAIN":
             self._handle_main(event.key)
+        elif self.state == "TUTORIAL":
+            if event.key == pygame.K_ESCAPE:
+                self._transition_to("MAIN")
         elif self.state == "CUSTOM_SELECT":
             self._handle_custom_select(event.key)
         elif self.state == "CUSTOM_EDIT":
@@ -188,28 +196,36 @@ class MenuScene(BaseScene):
             self.selection = (self.selection - 1) % count
             self._sync_selection()
             self.camera.shake(3)
+            self.game.sounds.play("menu_click")
         if key == pygame.K_DOWN:
             self.selection = (self.selection + 1) % count
             self._sync_selection()
             self.camera.shake(3)
+            self.game.sounds.play("menu_click")
         if key == pygame.K_RETURN:
             self.game.sounds.play("menu_click")
             if self.selection == 0:
-                # Go to lobby instead of directly to map select
                 from game.scenes.lobby_scene import LobbyScene
                 self.game.replace_scene(LobbyScene(self.game))
-            elif self.selection == 1: self._transition_to("CUSTOM_SELECT")
-            elif self.selection == 2: self.game.running = False
+            elif self.selection == 1:
+                self._transition_to("TUTORIAL")
+            elif self.selection == 2:
+                self._transition_to("CUSTOM_SELECT")
+            elif self.selection == 3:
+                self.game.running = False
 
     def _handle_custom_select(self, key):
         if key in (pygame.K_UP, pygame.K_DOWN):
             self.player_to_edit = (self.player_to_edit + 1) % 2
             self._update_player_selection()
             self.camera.shake(3)
+            self.game.sounds.play("menu_click")
         if key == pygame.K_RETURN:
             self._transition_to("CUSTOM_EDIT")
+            self.game.sounds.play("menu_click")
         if key == pygame.K_ESCAPE:
             self._transition_to("MAIN")
+            self.game.sounds.play("menu_click")
 
     def _handle_custom_edit(self, key):
         if key == pygame.K_i:
@@ -336,6 +352,8 @@ class MenuScene(BaseScene):
             self._draw_player_select(screen)
         elif self.state == "CUSTOM_EDIT":
             self._draw_player_edit(screen)
+        elif self.state == "TUTORIAL":
+            self._draw_tutorial(screen)
 
         # Hint at bottom
         self.hint.draw(screen, SCREEN_WIDTH // 2, SCREEN_HEIGHT - 50, anchor="midbottom")
@@ -396,3 +414,50 @@ class MenuScene(BaseScene):
         self.game.player_renders[self.player_to_edit].draw_at(
             screen, self.game.player_sims[self.player_to_edit], preview_center
         )
+
+    def _draw_tutorial(self, screen):
+        self.state_title.draw(screen, SCREEN_WIDTH // 2, 40, anchor="midtop")
+
+        font_header = pygame.font.SysFont("Arial", 24, bold=True)
+        font_body   = pygame.font.SysFont("Arial", 22)
+
+        lines = [
+            ("GOAL", True),
+            ("Don't be the tagger when your timer runs out. If your timer hits 0, you lose.", False),
+            ("", False),
+            ("HOW TO TAG", True),
+            ("Walk into the other player while you are the tagger.", False),
+            ("The yellow circle shows your tag range.", False),
+            ("", False),
+            ("CONTROLS", True),
+            ("Player 1:   Move = S F     Jump = E     Ability = D", False),
+            ("Player 2:   Move = ARROWS  Jump = UP    Ability = DOWN", False),
+            ("", False),
+            ("ABILITIES  (randomized on each tag, only usable as tagger)", True),
+            ("LZR  Laser   >>  Fires a horizontal beam. Tags instantly if opponent is on same level.", False),
+            ("SPD  Speed   >>  Boosts your movement speed for 4 seconds.", False),
+            ("FRZ  Freeze  >>  Homing cube. Freezes the opponent for 3 seconds if it hits.", False),
+            ("GLT  Glitch  >>  Homing cube. Tags the opponent if it hits.", False),
+            ("", False),
+            ("TIMER", True),
+            ("Your timer only counts down while YOU are the tagger.", False),
+            ("Ability cooldowns only regenerate while you are the runner.", False),
+            ("", False),
+            ("ONLINE", True),
+            ("Enter a 4-letter room code to play online. Both players must use the same code.", False),
+            ("Type OOOO for local splitscreen on the same keyboard.", False),
+            ("", False),
+            ("ESC   Back to menu", True),
+        ]
+
+        y = 120
+        for text, is_header in lines:
+            if not text:
+                y += 14
+                continue
+            if is_header:
+                surf = font_header.render(text, True, THEME["accent"])
+            else:
+                surf = font_body.render(text, True, (180, 180, 180))
+            screen.blit(surf, (80, y))
+            y += 30

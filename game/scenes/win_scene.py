@@ -34,7 +34,8 @@ class WinScene(BaseScene):
         self.frozen_frame = app.virtual_screen.copy()
 
     def handle_events(self, event):
-        # Skip animation on any key
+        if self._timer < 3.0:
+            return
         if event.type == pygame.KEYDOWN:
             self._finish()
 

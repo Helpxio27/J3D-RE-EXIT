@@ -91,14 +91,6 @@ class LobbyScene(BaseScene):
         display = self.code_input + "_" * (self.max_code_length - len(self.code_input))
         self.code_display.text = display
 
-    def _attempt_join(self):
-        # Create client and send join
-        self.client = GameClient()
-        self.client.join(self.code_input)
-        self.app.client = self.client  # give app access to client
-        self.state = "WAITING"
-        self.camera.add_action("zoom", 1.05, 0.08)
-
     def _show_error(self, msg):
         self.error_msg = msg
         self.error_label.text = msg
