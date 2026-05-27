@@ -79,7 +79,7 @@ class GameplayScene(BaseScene):
                                 self.timer_system.timers[i].time_left = t_data["time_left"]
                                 self.timer_system.timers[i].running   = t_data["running"]
 
-                    # Sync abilities from server      ← add this block
+                    # Sync abilities from server
                     if "abilities" in msg:
                         for pid_str, slot_data in msg["abilities"].items():
                             pid = int(pid_str)
@@ -116,8 +116,7 @@ class GameplayScene(BaseScene):
         for i, render in enumerate(self.app.player_renders):
             render.update(self.app.render_dt, self.app.player_sims[i])
 
-        self.item_manager.update(self.app)   # ← this was missing
-
+        self.item_manager.update(self.app) 
         self._update_tag()
         self.timer_system.update(FIXED_DT)
 
@@ -214,7 +213,7 @@ class GameplayScene(BaseScene):
         self.item_manager.draw(world_surface)
         screen.blit(self.camera.apply(world_surface), (0, 0))
 
-        # HUD drawn on top of camera — never shakes with the world
+        # HUD drawn on top of camera | never shakes with the world
         self.hud.draw(screen, self.app.player_sims, self.timer_system,
                     screen.get_width(), screen.get_height())
 

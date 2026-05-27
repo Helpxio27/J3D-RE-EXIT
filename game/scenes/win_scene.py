@@ -54,12 +54,15 @@ class WinScene(BaseScene):
         if self._done:
             return
         self._done = True
-        self.app.sounds.stop_music()
+        self.app.sounds.fade_out_music(1500)
+        self.app.sounds.play_music_after_fade(
+            resource_path("assets/audio/music/menu.mp3"),
+            delay_ms=1500
+        )
         self.app.online = False
         self.app.client = None
         from game.scenes.menu_scene import MenuScene
         self.app.replace_scene(MenuScene(self.app))
-        
 
     def draw(self, screen):
         # Frozen game world behind overlay

@@ -158,7 +158,16 @@ class App:
         self.level = Level(m["folder"])
         self.renderer = MapRenderer(self.level)
 
-        # Load background from this map's folder
+        # Music
+        music = self.level.config.get("bg_music", "")
+        if music:
+            music_path = resource_path(os.path.join(m["folder"], music))
+            self.sounds.fade_out_music(1500)
+            self.sounds.play_music_after_fade(music_path, delay_ms=1500)
+        else:
+            self.sounds.fade_out_music(1000)
+
+        # Background
         try:
             bg_path = resource_path(os.path.join(m["folder"], self.level.config.get("background", "background.png")))
             self.background = pygame.transform.scale(
@@ -169,6 +178,7 @@ class App:
             self.background = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
             self.background.fill(BACKGROUND_COLOR)
 
+        # Full reset
         self._reset_players()
         self.online = False if not hasattr(self, 'client') or not self.client else self.online
         self.replace_scene(GameplayScene(self))
@@ -184,10 +194,20 @@ class App:
         self.replace_scene(MenuScene(self))      # swap gameplay for menu
 
     def _reset_players(self):
+        from config.constants import MAX_SPEED
         for i, sim in enumerate(self.player_sims):
             sim.rect.center = self.spawn_points[i]
             sim.vel_x = 0
             sim.vel_y = 0
+            sim.max_speed = MAX_SPEED
+            sim.stun_timer = 0
+            sim.tagback_cooldown = 0
+            sim.is_tagger = (i == 0)   # P1 always starts as tagger
+            sim.power = None
+            sim.power_ready = True
+            sim.on_ground = False
+            sim.on_wall = False
+            sim.wall_dir = 0
 
     # =====================
     # DOES: scales virtual screen to real window

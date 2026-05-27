@@ -144,7 +144,7 @@ class LobbyScene(BaseScene):
         messages = self.client.receive()
         for msg in messages:
             if msg.get("type") == "state":
-                map_idx = msg.get("map_idx", 0)  # ← read from state packet
+                map_idx = msg.get("map_idx", 0) 
                 self.app.online = True
                 self._do_start_game(map_idx)
                 return
