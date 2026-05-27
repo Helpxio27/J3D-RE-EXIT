@@ -5,7 +5,7 @@ from game.ui.widgets import Label, Logo
 from game.ui.theme import THEME
 from game.ui.animator import lerp
 from config.settings import SCREEN_WIDTH, SCREEN_HEIGHT
-
+from tools.path import resource_path
 
 class WinScene(BaseScene):
     def __init__(self, app, winner_id: int, winner_color: tuple):
